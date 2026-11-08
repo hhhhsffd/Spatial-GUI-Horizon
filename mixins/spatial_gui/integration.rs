@@ -15,7 +15,7 @@ use horizon_client::{
 };
 use std::{cell::RefCell, fs, path::PathBuf, sync::atomic::Ordering, time::Instant};
 pub(super) const ID: &str = "spatial_gui";
-pub(super) const VERSION: &str = "0.2.1";
+pub(super) const VERSION: &str = "0.2.2";
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Camera {
     pub position: DVec3,
@@ -72,6 +72,7 @@ pub(super) struct Session {
     pub end: Option<u32>,
     pub capture_start: Option<u32>,
     pub category: usize,
+    pub settings_wheel: Option<(usize, f64)>,
     pub file: PathBuf,
     pub profiles_file: PathBuf,
     pub reload_notice: String,
@@ -120,6 +121,7 @@ impl Default for Session {
             end: None,
             capture_start: None,
             category: 0,
+            settings_wheel: None,
             file: PathBuf::new(),
             profiles_file: PathBuf::new(),
             reload_notice: String::new(),

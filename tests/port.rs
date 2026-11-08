@@ -244,3 +244,65 @@ fn avatar_looks_at_the_pointer_even_with_camera_parallax_disabled() {
         -35.0
     );
 }
+
+#[test]
+fn numeric_settings_step_back_and_wrap_at_both_limits() {
+    for spec in SETTINGS
+        .iter()
+        .filter(|s| s.kind == "number" || s.kind == "integer")
+    {
+        let mut value = Config::default().value();
+        value[spec.key] = serde_json::Value::from(spec.min);
+        let mut config = Config::from_value(value).unwrap();
+        config.edit(spec.key, -1.0);
+        let at = config.value()[spec.key].as_f64().unwrap();
+        assert!((at - spec.max).abs() < 0.0001, "{}: {at}", spec.key);
+        config.edit(spec.key, 1.0);
+        let at = config.value()[spec.key].as_f64().unwrap();
+        assert!((at - spec.min).abs() < 0.0001, "{}: {at}", spec.key);
+        config.edit(spec.key, 1.0);
+        let at = config.value()[spec.key].as_f64().unwrap();
+        assert!(
+            (at - spec.min - spec.step).abs() < 0.0001,
+            "{}: {at}",
+            spec.key
+        );
+        config.edit(spec.key, -1.0);
+        let at = config.value()[spec.key].as_f64().unwrap();
+        assert!((at - spec.min).abs() < 0.0001, "{}: {at}", spec.key);
+    }
+}
+
+#[test]
+fn settings_choices_cycle_backwards_with_wrapping() {
+    let mut config = Config::default();
+    config.animation_easing = "Cubic".into();
+    config.edit("animationEasing", -1.0);
+    assert_eq!(config.animation_easing, "Quartic");
+    config.edit("animationEasing", -1.0);
+    assert_eq!(config.animation_easing, "Quadratic");
+    config.edit("animationEasing", 1.0);
+    config.edit("animationEasing", 1.0);
+    assert_eq!(config.animation_easing, "Cubic");
+    let original = config.view_mode.clone();
+    config.edit("viewMode", -1.0);
+    assert_ne!(config.view_mode, original);
+    config.edit("viewMode", 1.0);
+    assert_eq!(config.view_mode, original);
+}
+
+#[test]
+fn reverse_boolean_settings_toggle_and_empty_scroll_does_nothing() {
+    let mut config = Config::default();
+    let original = config.clone();
+    config.edit("enabled", -1.0);
+    assert_eq!(config.enabled, !original.enabled);
+    config.edit("enabled", 1.0);
+    assert_eq!(config, original);
+    for spec in SETTINGS {
+        for amount in [0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            config.edit(spec.key, amount);
+            assert_eq!(config, original, "{}: {amount}", spec.key);
+        }
+    }
+}

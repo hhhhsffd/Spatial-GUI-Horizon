@@ -1242,6 +1242,9 @@ impl Config {
         serde_json::to_value(self).unwrap_or_default()
     }
     pub fn edit(&mut self, key: &str, direction: f64) {
+        if !direction.is_finite() || direction == 0.0 {
+            return;
+        }
         let Some(spec) = SETTINGS.iter().find(|s| s.key == key) else {
             return;
         };
@@ -1250,12 +1253,16 @@ impl Config {
             "bool" => v[key] = Value::Bool(!v[key].as_bool().unwrap_or(false)),
             "integer" | "number" => {
                 let mut n = v[key].as_f64().unwrap_or(spec.min) + spec.step * direction;
-                if n > spec.max {
+                // Stored floats are f32. Ignore their rounding error at the
+                // endpoints so a reverse step back to the minimum cannot wrap.
+                let epsilon = spec.step.abs() * 0.0001;
+                if n > spec.max + epsilon {
                     n = spec.min;
                 }
-                if n < spec.min {
+                if n < spec.min - epsilon {
                     n = spec.max;
                 }
+                n = n.clamp(spec.min, spec.max);
                 v[key] = if spec.kind == "integer" {
                     Value::from(n.round() as i64)
                 } else {
@@ -1280,7 +1287,12 @@ impl Config {
                     .iter()
                     .position(|s| Some(*s) == v[key].as_str())
                     .unwrap_or(0);
-                v[key] = Value::String(choices[(i + 1) % choices.len()].into());
+                let step = if direction < 0.0 {
+                    choices.len() - 1
+                } else {
+                    1
+                };
+                v[key] = Value::String(choices[(i + step) % choices.len()].into());
             }
             _ => {}
         }

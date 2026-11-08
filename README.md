@@ -6,7 +6,7 @@ Targets Horizon **`nightly-2026-11-05-66f3981`**, Minecraft data version **26.3*
 
 ## Install
 
-Download [Spatial GUI 0.2.1](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.1), or use [dist/spatial_gui-0.2.1.hnmod](dist/spatial_gui-0.2.1.hnmod). Import it through a Horizon launcher with native mod support. It contains source, a manifest, and the upstream MIT license; the launcher builds the native client.
+Download [Spatial GUI 0.2.2](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.2), or use [dist/spatial_gui-0.2.2.hnmod](dist/spatial_gui-0.2.2.hnmod). Import it through a Horizon launcher with native mod support. It contains source, a manifest, and the upstream MIT license; the launcher builds the native client.
 
 Alternatively, build directly from this folder:
 
@@ -30,6 +30,14 @@ Inventory, creative, and container menus are enabled by default. Pause presentat
 ## Controls
 
 Open **Options > Mods > Spatial GUI** for categorized settings and key rebinding.
+
+Hover a setting or the category selector to adjust it:
+
+- **Left-click / scroll up:** increase the value or select the next option.
+- **Right-click / scroll down:** decrease the value or select the previous option.
+- Boolean settings toggle in either direction. Numeric values and choices wrap at their limits.
+
+Changes save immediately. Scroll over a gap, key-binding row, or action button to scroll the settings list. Key rebinding still accepts mouse buttons.
 
 | Key | Action |
 | --- | --- |

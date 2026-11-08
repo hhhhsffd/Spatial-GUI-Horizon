@@ -434,6 +434,9 @@ pub(super) fn input(game: &mut Game<'_>, event: &mut WindowEvent) -> bool {
     if !game.native_on(ID) {
         return false;
     }
+    if settings_input(game, event) {
+        return true;
+    }
     if let WindowEvent::KeyboardInput { event: key, .. } = event {
         let PhysicalKey::Code(code) = key.physical_key else {
             return false;
@@ -641,6 +644,90 @@ pub(super) fn relative(game: &Game<'_>, event: &DeviceEvent) {
     });
 }
 
+/// Only scalar settings and the category selector consume the wheel/right click.
+/// All other areas retain Horizon's normal list scrolling and key rebinding.
+fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
+    use horizon_client::options_ui::Page;
+    let Page::NativeMod(index) = game.ui.options.page() else {
+        STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
+        return false;
+    };
+    if game.screen != Screen::Options
+        || STATE.with(|cell| {
+            let s = cell.borrow();
+            s.editor.active || s.editor.picker || s.editor.dialog.is_some()
+        })
+    {
+        STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
+        return false;
+    }
+    let wheel = match event {
+        WindowEvent::MouseWheel { delta, .. } => Some(match delta {
+            MouseScrollDelta::LineDelta(_, y) => f64::from(*y),
+            MouseScrollDelta::PixelDelta(p) => p.y / 30.0,
+        }),
+        WindowEvent::MouseInput {
+            state: ElementState::Pressed,
+            button: MouseButton::Right,
+            ..
+        } => None,
+        _ => return false,
+    };
+    let size = game.gui_size();
+    let button = game
+        .ui
+        .options
+        .spatial_gui_setting_at(&game.settings, size, game.cursor);
+    let Some(button) = button else {
+        STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
+        return false;
+    };
+    let adjustable = STATE.with(|cell| {
+        let s = cell.borrow();
+        button == 0
+            || button
+                .checked_sub(4)
+                .and_then(|i| {
+                    SETTINGS
+                        .iter()
+                        .filter(|spec| spec.category == CATEGORIES[s.category % CATEGORIES.len()])
+                        .nth(i)
+                })
+                .is_some_and(|spec| spec.kind != "list")
+    });
+    if !adjustable {
+        STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
+        return false;
+    }
+    let steps = STATE.with(|cell| {
+        let mut s = cell.borrow_mut();
+        let Some(amount) = wheel else {
+            s.settings_wheel = None;
+            return -1;
+        };
+        if !amount.is_finite() || amount == 0.0 {
+            return 0;
+        }
+        // Keep fractional trackpad deltas, but never carry them to another
+        // control or across a change in scrolling direction.
+        let previous = s
+            .settings_wheel
+            .filter(|(target, value)| *target == button && value.signum() == amount.signum())
+            .map_or(0.0, |(_, value)| value);
+        let total = previous + amount;
+        let steps = total.trunc() as i32;
+        s.settings_wheel = Some((button, total.fract()));
+        steps
+    });
+    if steps != 0 {
+        for _ in 0..steps.unsigned_abs() {
+            settings_step(game, button, f64::from(steps.signum()));
+        }
+        game.native_settings_refresh(index);
+    }
+    true
+}
+
 pub(super) fn settings(game: &Game<'_>) -> Vec<String> {
     runtime::load(game);
     STATE.with(|cell| {
@@ -662,11 +749,23 @@ pub(super) fn settings(game: &Game<'_>) -> Vec<String> {
     })
 }
 pub(super) fn settings_click(game: &mut Game<'_>, button: usize) {
+    STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
+    settings_step(game, button, 1.0);
+}
+
+fn settings_step(game: &mut Game<'_>, button: usize, direction: f64) {
     runtime::load(game);
     STATE.with(|cell| {
         let mut s = cell.borrow_mut();
         match button {
-            0 => s.category = (s.category + 1) % CATEGORIES.len(),
+            0 => {
+                let step = if direction < 0.0 {
+                    CATEGORIES.len() - 1
+                } else {
+                    1
+                };
+                s.category = (s.category + step) % CATEGORIES.len();
+            }
             1 => toggle_editor(game, &mut s),
             2 => {
                 if game.player.is_some() {
@@ -704,7 +803,7 @@ pub(super) fn settings_click(game: &mut Game<'_>, button: usize) {
                             text,
                         });
                     } else {
-                        s.global.edit(spec.key, 1.0);
+                        s.global.edit(spec.key, direction);
                         s.config = s.global.clone();
                         runtime::save_global(&s);
                     }

@@ -1,10 +1,16 @@
 [mod]
 id = "spatial_gui"
-version = "0.2.1"
+version = "0.2.2"
 priority = 100
 
 [compatibility]
 horizon_revision = "66f3981f522b24c250b21523a70080965b940424"
+
+[[module]]
+id = "settings_ui"
+file = "crates/horizon-client-render/src/options_ui.rs"
+name = "spatial_settings_input"
+source = "settings_ui.rs"
 
 [[module]]
 id = "config"

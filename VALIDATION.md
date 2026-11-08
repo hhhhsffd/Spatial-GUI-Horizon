@@ -1,4 +1,18 @@
-# Validation of Spatial GUI 0.2.1
+# Validation of Spatial GUI 0.2.2
+
+Targets Horizon `66f3981f522b24c250b21523a70080965b940424` (`nightly-2026-11-05-66f3981`).
+
+- Added scroll-up/left-click forward and scroll-down/right-click backward settings controls.
+- `python tools/port.py test`: **16 tests passed**, including backward choice cycling, numeric stepping/wrapping across every numeric setting, boolean toggles, and zero/nonfinite input.
+- Two focused Horizon renderer tests passed, covering scrolled/clipped button hit targets, key-rebinding state, other mod pages, and scrollbar dragging.
+- Declarative staging succeeded against the pinned revision: **50 injections and 9 support modules**.
+- `python tools/port.py check --target-dir <launcher-native-target>`: passed against the pinned Horizon source with the bundled Rust 1.99.1 and MinGW toolchain.
+- The `.hnmod` ZIP passed integrity checks, and every packaged Rust/manifest file matched the local source byte-for-byte. The archive contains **62 entries**, is **61,063 bytes**, and includes a SHA-256 sidecar.
+- No game was launched or tested for this update.
+
+---
+
+## Historical validation of Spatial GUI 0.2.1
 
 The 0.2.1 fix targets Horizon `66f3981f522b24c250b21523a70080965b940424` (`nightly-2026-11-05-66f3981`).
 

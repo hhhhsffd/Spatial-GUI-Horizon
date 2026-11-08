@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+- Added mouse-wheel changes to settings and categories: up increases/next, down decreases/previous.
+- Added right-click to decrease values or choose the previous setting/category; left-click still moves forward.
+- Fixed backward choice cycling and floating-point rounding near numeric limits.
+- Preserved list scrolling outside adjustable buttons, clipping of hidden rows, and mouse key rebinding.
+
 ## 0.2.1
 
 - Fixed the third-person avatar facing away from the GUI by removing an extra half-turn.

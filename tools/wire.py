@@ -5,7 +5,7 @@ import json
 BUNDLE = Path(__file__).resolve().parents[1] / "mixins/spatial_gui"
 parts = ['''[mod]
 id = "spatial_gui"
-version = "0.2.1"
+version = "0.2.2"
 priority = 100
 
 [compatibility]
@@ -23,6 +23,7 @@ def hook(id, target, args, body, result=None, cancel=False, kind="HEAD"):
 
 game_file = "crates/horizon-client/src/game.rs"
 hud_file = "crates/horizon-client-render/src/hud.rs"
+module('settings_ui', 'crates/horizon-client-render/src/options_ui.rs', 'spatial_settings_input', 'settings_ui.rs')
 for id, name, source in [('config','spatial_config','config.rs'), ('editor','spatial_editor','editor.rs'), ('integration','spatial_integration','integration.rs'), ('controls','spatial_controls','controls.rs')]:
     module(id, game_file, name, source)
 module('geometry',hud_file,'spatial_math','geometry.rs',True)

@@ -2,11 +2,11 @@
 
 Upstream reference: `88eeb54a262eff78ac2857995d8d9d1dd533dd22`.
 
-The 0.2.1 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. Implementation was completed before the new validation pass; the earlier 0.1.0 test results do not establish 0.2.0 correctness. See VALIDATION.md for the checks actually run.
+The 0.2.2 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. Implementation was completed before the new validation pass; the earlier 0.1.0 test results do not establish 0.2.0 correctness. See VALIDATION.md for the checks actually run.
 
 | Area | Native implementation |
 | --- | --- |
-| Configuration | All 100 upstream fields, JSON5 import, categorized settings, bounds and key rebinding |
+| Configuration | All 100 upstream fields, JSON5 import, categorized settings with scroll/forward/backward mouse controls, bounds and key rebinding |
 | Renderer | Offscreen native GUI extraction, perspective-correct world surface, world and local player depth, filtering, shadows, lightmap tint, independent render resolution and GUI scale, world-only blur |
 | Camera | Anchored first/third person, offsets, smooth opening/closing, collision fallback, mirror/parallax, elytra offsets, FOV scaling and saved-perspective restoration |
 | Input | Crosshair/free cursor, relative mouse look, inverse ray mapping, scrolling/dragging and logical controller navigation with projected cursor |
