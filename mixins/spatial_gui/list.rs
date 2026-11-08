@@ -1,0 +1,3 @@
+fn spatial_list(mods: &mut Vec<crate::game::native_hooks::NativeMod>) {
+    mods.push(crate::game::native_hooks::NativeMod { id: crate::game::spatial_integration::ID.into(), title: format!("Spatial GUI {}",crate::game::spatial_integration::VERSION), description: "World-space menus, camera transitions, curved input and visual editor. Rust port of tastytrash/Spatial-GUI.".into(), keys: vec![["editor".into(),"Toggle visual editor".into(),"key.keyboard.f8".into()],["profiles".into(),"Choose a profile".into(),"key.keyboard.grave.accent".into()],["config".into(),"Open configuration".into(),"key.keyboard.f7".into()],["reload".into(),"Reload configuration".into(),"key.keyboard.f6".into()],["mouse_free".into(),"Toggle free cursor".into(),"key.keyboard.tab".into()]] });
+}

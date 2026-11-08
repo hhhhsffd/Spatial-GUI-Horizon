@@ -1,0 +1,9 @@
+/target/
+/upstream/
+/tooling/
+/horizon-mod-docs.*
+*.log
+__pycache__/
+*.py[cod]
+/dist/spatial_gui-0.1.0.hnmod*
+/dist/spatial_gui-0.2.0.hnmod*
