@@ -296,15 +296,15 @@ impl Editor {
                 6.0,
                 distance,
             );
-            if first && c.curved_screen_enabled {
+            if c.curved_screen_enabled {
                 self.slider(
                     "curvedScreenArcDegrees",
                     "Arc",
                     w - 109.0,
                     176.0,
                     104.0,
-                    5.0,
-                    150.0,
+                    -180.0,
+                    180.0,
                     c.curved_screen_arc_degrees as f32,
                 );
             }

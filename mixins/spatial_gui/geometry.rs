@@ -45,7 +45,7 @@ impl Surface {
                     continue;
                 }
                 let p = o + d * t;
-                let angle = p.x.atan2(r - p.z);
+                let angle = (p.x / r).atan2(1.0 - p.z / r);
                 if angle.abs() <= self.arc.abs() * 0.5 + 0.05 {
                     result = Some((t, angle * r));
                     break;

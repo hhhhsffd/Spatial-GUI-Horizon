@@ -1,4 +1,35 @@
-# Validation of Spatial GUI 0.2.2
+# Validation of Spatial GUI 0.2.3
+
+Checked on 2026-11-14 against **Horizon `nightly-2026-11-13-9f42064`**, revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` (latest published game nightly at the time), and horizon-mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
+
+## Build and automated checks
+
+- `python tools/port.py test`: **17 tests passed**. The movement regression covers render partial ticks, running/falling motion, player-relative opening/closing transitions, large world coordinates, and yaw wrapping. Ray tests also cover backward curvature up to ±180°.
+- Core/editor `cargo clippy --locked --all-targets -- -D warnings`: passed. Changed Rust files pass rustfmt.
+- Declarative staging: **50 injections and 10 support modules**.
+- Optimized `fast` build of the official game executable (`horizon-official`, the current launcher game entry point): passed. Source staging preserves the original downloaded Horizon source.
+- Final compiler check of `horizon-official` against the packaged source: passed.
+- **Three renderer tests passed**: two native settings hit-target/clipping tests and a GPU regression which renders the actual avatar/hand mask and panel shaders. The GPU test checks opacity 0/50/255, the player-in-front toggle, terrain occlusion, and both SDR and HDR coverage outputs.
+
+## Runtime checks
+
+The official game ran offscreen on an NVIDIA RTX 2080 (Vulkan), at 1280×720, with fresh test worlds and isolated game/launcher/config/home directories. Existing player data and the selected launcher version were not changed.
+
+- Opened the creative GUI while sprinting (confirmed horizontal velocity about 0.15 blocks/tick) and while falling from Y=220. The player fell to the test platform at Y=121 with the GUI open. Captured the opening and successive falling frames; the camera, panel, and avatar remained aligned instead of separating at tick boundaries.
+- Set `screenOverPlayerAlpha` to 0 and 255 with an overlapping third-person layout: the avatar remained unobstructed at 0, while the panel covered its overlapping pixels at 255. Disabling `renderPlayerInFront` restored full panel rendering over the avatar.
+- Reloaded JSON5 settings during the session. First-person mode with −60° backward curvature, visible held sword, and screen-over-player opacity rendered successfully.
+- Opened and closed the visual editor with the native key path; its arc slider displayed −60°. Closing the GUI returned to ordinary gameplay.
+- The final runtime log contained no panic or GPU validation error, and the test world was saved and stopped.
+
+Runtime captures and command/state logs remain in `target/runtime-0.2.3-bf2a8cda`. These checks do not establish compatibility with every native mod, resource/shader pack, hardware controller, or HDR display.
+
+## Bundle verification
+
+The 0.2.3 `.hnmod` contains **63 entries**, is **64,305 bytes**, and includes a SHA-256 sidecar. ZIP integrity, source equality, native metadata, and absence of Python/Java/JAR runtime files were checked. Packaging is deterministic.
+
+---
+
+## Historical validation of Spatial GUI 0.2.2
 
 Targets Horizon `66f3981f522b24c250b21523a70080965b940424` (`nightly-2026-11-05-66f3981`).
 

@@ -114,7 +114,15 @@ fn world_surface_ray_mapping_matches_rendered_vertices() {
     // Camera-relative arithmetic must retain precision far from spawn.
     for center in [DVec3::ZERO, DVec3::new(20_000_000.0, 100.0, -20_000_000.0)] {
         for angle in [0.0_f32, 0.5, 1.8] {
-            for arc in [0.0_f32, 0.2, 0.9, 2.5] {
+            for arc in [
+                -std::f32::consts::PI,
+                -0.9,
+                -0.2,
+                0.0,
+                0.2,
+                0.9,
+                std::f32::consts::PI,
+            ] {
                 let rotation = Quat::from_euler(glam::EulerRot::YXZ, angle, 0.3, -0.2);
                 let surface = Surface {
                     center,
@@ -275,8 +283,10 @@ fn numeric_settings_step_back_and_wrap_at_both_limits() {
 
 #[test]
 fn settings_choices_cycle_backwards_with_wrapping() {
-    let mut config = Config::default();
-    config.animation_easing = "Cubic".into();
+    let mut config = Config {
+        animation_easing: "Cubic".into(),
+        ..Config::default()
+    };
     config.edit("animationEasing", -1.0);
     assert_eq!(config.animation_easing, "Quartic");
     config.edit("animationEasing", -1.0);
@@ -303,6 +313,60 @@ fn reverse_boolean_settings_toggle_and_empty_scroll_does_nothing() {
         for amount in [0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             config.edit(spec.key, amount);
             assert_eq!(config, original, "{}: {amount}", spec.key);
+        }
+    }
+}
+
+#[test]
+fn moving_player_keeps_camera_and_panel_offsets_through_transitions() {
+    use spatial_gui_native::motion::{Camera, player_position};
+    // Running, falling, and landing: include tick boundaries and render rates
+    // which are not multiples of the 20 Hz simulation.
+    let origin = DVec3::new(20_000_000.0, 100.0, -20_000_000.0);
+    for velocity in [
+        DVec3::new(0.28, 0.0, -0.17),
+        DVec3::new(0.12, -1.8, 0.0),
+        DVec3::ZERO,
+    ] {
+        for (from_offset, to_offset) in [
+            (DVec3::new(0.0, 1.62, 0.0), DVec3::new(1.1, 1.0, -2.0)),
+            (DVec3::new(1.1, 1.0, -2.0), DVec3::new(0.0, 1.62, 0.0)),
+        ] {
+            let from = Camera {
+                position: origin + from_offset,
+                yaw: 179.0,
+                pitch: 0.0,
+            };
+            for tick in 0..10 {
+                for partial in [0.0, 0.13, 0.5, 0.87, 1.0] {
+                    let previous = origin + velocity * f64::from(tick);
+                    let current = previous + velocity;
+                    let feet = player_position(previous.to_array(), current.to_array(), partial);
+                    // Independent renderer interpolation, as for the local model.
+                    let rendered = previous * (1.0 - partial) + current * partial;
+                    assert!((feet - rendered).length() < 1e-7);
+                    let to = Camera {
+                        position: feet + to_offset,
+                        yaw: -179.0,
+                        pitch: 20.0,
+                    };
+                    for progress in [0.0, 0.2, 0.75, 1.0] {
+                        let camera = from.interpolate(to, progress, feet - origin);
+                        let expected_offset = from_offset * (1.0 - f64::from(progress))
+                            + to_offset * f64::from(progress);
+                        assert!((camera.position - rendered - expected_offset).length() < 1e-7);
+                        assert!((camera.yaw - (179.0 + 2.0 * progress)).abs() < 1e-5);
+                        let panel = feet + DVec3::new(0.4, 1.62, 1.2);
+                        assert!(
+                            (panel
+                                - camera.position
+                                - (DVec3::new(0.4, 1.62, 1.2) - expected_offset))
+                                .length()
+                                < 1e-7
+                        );
+                    }
+                }
+            }
         }
     }
 }

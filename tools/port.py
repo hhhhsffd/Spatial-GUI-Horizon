@@ -128,7 +128,7 @@ def main():
     sync_stage(fresh, stage)
     env["CARGO_TARGET_DIR"] = str((args.target_dir or target / "horizon-cargo").resolve())
     run([cargo, args.action, "--locked", "--profile", args.profile,
-         "-p", "horizon-client", "--bin", "horizon-client"], cwd=stage, env=env)
+         "-p", "horizon-official", "--bin", "horizon-official"], cwd=stage, env=env)
 
 
 if __name__ == "__main__":

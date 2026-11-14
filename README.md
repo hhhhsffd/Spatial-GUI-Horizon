@@ -2,16 +2,16 @@
 
 Native Rust port of [tastytrash/Spatial-GUI](https://github.com/tastytrash/Spatial-GUI), distributed as a **`.hnmod`** source bundle. Horizon compiles the Rust into its client. Java, Fabric, a JVM, and Python are not required to run the mod.
 
-Targets Horizon **`nightly-2026-11-05-66f3981`**, Minecraft data version **26.3**. Private renderer and input integrations require Horizon revision `66f3981f522b24c250b21523a70080965b940424` and horizon-mixins revision `e8cd0aa38cffef49cb2e088ef716baa107148c02`.
+Targets Horizon **`nightly-2026-11-13-9f42064`** (the latest published game nightly checked on 2026-11-14), Minecraft data version **26.3**. Private renderer and input integrations require Horizon revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` and horizon-mixins revision `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
 
 ## Install
 
-Download [Spatial GUI 0.2.2](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.2), or use [dist/spatial_gui-0.2.2.hnmod](dist/spatial_gui-0.2.2.hnmod). Import it through a Horizon launcher with native mod support. It contains source, a manifest, and the upstream MIT license; the launcher builds the native client.
+Download [Spatial GUI 0.2.3](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.3), or use [dist/spatial_gui-0.2.3.hnmod](dist/spatial_gui-0.2.3.hnmod). Import it through a Horizon launcher with native mod support. It contains source, a manifest, and the upstream MIT license; the launcher builds the native client.
 
 Alternatively, build directly from this folder:
 
 ```powershell
-horizon-launcher native-build ./mixins/spatial_gui --instance "YOUR INSTANCE" --version nightly-2026-11-05-66f3981 --trust-native-code
+horizon-launcher native-build ./mixins/spatial_gui --instance "YOUR INSTANCE" --version nightly-2026-11-13-9f42064 --trust-native-code
 ```
 
 Select the resulting native version for the instance if the launcher does not select it automatically. For an extracted archive, use its `mixins/spatial_gui` directory. Multiplayer servers and other players do not need the mod.
@@ -23,7 +23,7 @@ Select the resulting native version for the instance if the launcher does not se
 - Ray-based input for slots, dragging, tooltips, scrollbars, text fields, and recipe panels. First-person crosshair interaction supports relative mouse look and a free-cursor toggle. Controller-generated logical navigation retains its original menu coordinates and gets a projected cursor.
 - Fade and scale animations with all seven upstream easing modes, optional hand poke and arm swing, and local avatar body/head posing.
 - Mouse-operated visual editor with translation/rotation/scale gizmos, sliders, orbit, preview, GUI scale, undo, redo, undo all, and immediate layout persistence.
-- Named profiles with create, rename, delete, default linking, and assignment to a screen, category, or all screens. All 100 upstream configuration fields and the upstream JSON5 profile format are supported.
+- Named profiles with create, rename, delete, default linking, and assignment to a screen, category, or all screens. All 100 configuration fields from the original port's upstream reference and the upstream JSON5 profile format are supported.
 
 Inventory, creative, and container menus are enabled by default. Pause presentation is optional. Other in-world screens can be enabled using the screen lists or `allScreens`, including books, signs, chat, options, dialogs, and native mod screens. Title and loading screens use ordinary rendering because there is no player/world anchor.
 
@@ -65,6 +65,10 @@ Files live in the instance's standard Horizon `config` directory:
 
 Copy existing Java mod configuration into those locations, then reload with F6. Invalid field values are bounded or replaced with defaults. Comments, single quotes, unquoted keys, trailing commas, hexadecimal numbers, and escaped Unicode are accepted. Saving writes formatted JSON, which is valid JSON5.
 
+- `renderPlayerInFront` (default `true`): keep the third-person avatar in front of the panel.
+- `screenOverPlayerAlpha` (0–255, default `50`): panel opacity over the avatar, or over visible first-person hands. Set to `0` for no panel over the player; `255` for full panel opacity.
+- `curvedScreenEnabled` and `curvedScreenArcDegrees`: curvature works in both perspectives, from −180° to 180° (negative values bend backward).
+
 Profile rules resolve in this order: exact native screen key, original Java screen class alias, category (`#inventory`, `#containers`, `#pause`, `#other`), then `#all`. Native menu keys include `inventory:minecraft:generic_9x3`; native mod screens use `mod:<owner>`. The `seenScreens` setting records encountered aliases. `disabledScreens` wins over enable rules. A profile's `guiScale` implies `overrideGuiScale` unless explicitly overridden. The linked default follows the global configuration.
 
 ## Native compatibility
@@ -89,4 +93,4 @@ See [PORTING_STATUS.md](PORTING_STATUS.md) for implementation coverage and [VALI
 
 ## Credits
 
-Original mod: **tastytrash and Spatial-GUI contributors**, reference `88eeb54a262eff78ac2857995d8d9d1dd533dd22`. MIT; the original license is retained in [LICENSE](LICENSE) and in the bundle. No Minecraft game code or assets are distributed.
+Original mod: **tastytrash and Spatial-GUI contributors**, original port reference `88eeb54a262eff78ac2857995d8d9d1dd533dd22`; rendering fixes reviewed through `abfe5ae9c46dac0fdcfa09f46c89598db791eead`. New upstream features such as world-effect filters and the separate screen-manager UI are not included in this bug-fix release. MIT; the original license is retained in [LICENSE](LICENSE) and in the bundle. No Minecraft game code or assets are distributed.

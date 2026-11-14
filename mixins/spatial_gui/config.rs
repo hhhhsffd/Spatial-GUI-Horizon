@@ -880,8 +880,8 @@ pub const SETTINGS: &[Setting] = &[
         label: "Curved screen arc degrees",
         category: "firstPerson",
         kind: "integer",
-        min: 5.000000000,
-        max: 150.000000000,
+        min: -180.000000000,
+        max: 180.000000000,
         step: 1.000000000,
     },
     Setting {

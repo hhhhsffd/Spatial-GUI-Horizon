@@ -1,10 +1,10 @@
 [mod]
 id = "spatial_gui"
-version = "0.2.2"
+version = "0.2.3"
 priority = 100
 
 [compatibility]
-horizon_revision = "66f3981f522b24c250b21523a70080965b940424"
+horizon_revision = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
 
 [[module]]
 id = "settings_ui"
@@ -50,6 +50,12 @@ name = "spatial_avatar"
 source = "avatar.rs"
 
 [[module]]
+id = "motion"
+file = "crates/horizon-client/src/game.rs"
+name = "spatial_motion"
+source = "motion.rs"
+
+[[module]]
 id = "surface"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_surface"
@@ -85,10 +91,10 @@ bindings = [
 [[injection]]
 id = "relative"
 kind = "HEAD"
-target = "horizon_client::game::<App as ApplicationHandler>::device_event"
+target = "horizon_client::game::window_handler::<Game<'_> as ApplicationHandler>::device_event"
 helper = "relative.rs"
 bindings = [
-  { name = "app", ty = "&crate::game::App", value = "&*self" },
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "event", ty = "&winit::event::DeviceEvent", value = "&event" },
 ]
 
@@ -115,7 +121,7 @@ bindings = [
 [[injection]]
 id = "pause"
 kind = "HEAD"
-target = "horizon_client::game::Game<'_>::pauses_game"
+target = "horizon_client::game::pointer_capture::Game<'_>::pauses_game"
 helper = "pause.rs"
 cancellable = true
 bindings = [
@@ -167,7 +173,7 @@ bindings = [
 [[injection]]
 id = "begin_creative"
 kind = "HEAD"
-target = "horizon_client::game::Game<'_>::draw_creative"
+target = "horizon_client::game::creative_screen::Game<'_>::draw_creative"
 helper = "begin_creative.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
@@ -229,16 +235,6 @@ id = "begin_world_options"
 kind = "HEAD"
 target = "horizon_client::game::lan_screen::Game<'_>::draw_world_options"
 helper = "begin_world_options.rs"
-bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
-]
-
-[[injection]]
-id = "begin_friends_screen"
-kind = "HEAD"
-target = "horizon_client::game::friends::Game<'_>::draw_friends_screen"
-helper = "begin_friends_screen.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
@@ -456,12 +452,11 @@ bindings = [
 
 [[injection]]
 id = "blur"
-kind = "RETURN"
-target = "horizon_client::game::Game<'_>::menu_blur"
+kind = "HEAD"
+target = "horizon_client::game::screen_backgrounds::Game<'_>::menu_blur"
 helper = "blur.rs"
+cancellable = true
 bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "value", ty = "Option<f32>", value = "$value" },
 ]
 
 [[injection]]
@@ -558,6 +553,15 @@ bindings = [
 ]
 
 [[injection]]
+id = "hand_drawn"
+kind = "HEAD"
+target = "horizon_client_render::gfx::native_render::native_hand_drawn"
+helper = "hand_drawn.rs"
+bindings = [
+  { name = "hand", ty = "&mut crate::gfx::native_render::HandDrawn<'_>", value = "&mut *hand" },
+]
+
+[[injection]]
 id = "render"
 kind = "HEAD"
 target = "horizon_client_render::hud::HudRenderer::draw_range"
@@ -567,6 +571,7 @@ bindings = [
   { name = "renderer", ty = "&crate::hud::HudRenderer", value = "&*self" },
   { name = "encoder", ty = "&mut wgpu::CommandEncoder", value = "&mut *encoder" },
   { name = "target", ty = "&wgpu::TextureView", value = "target" },
+  { name = "coverage", ty = "Option<&wgpu::TextureView>", value = "coverage" },
   { name = "depth", ty = "&wgpu::TextureView", value = "depth" },
   { name = "batch", ty = "&crate::hud::HudBatch", value = "batch" },
   { name = "size", ty = "[u32;2]", value = "size" },

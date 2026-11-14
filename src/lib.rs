@@ -9,3 +9,5 @@ pub use geometry as spatial_surface;
 pub mod avatar;
 #[path = "../mixins/spatial_gui/editor.rs"]
 pub mod editor;
+#[path = "../mixins/spatial_gui/motion.rs"]
+pub mod motion;

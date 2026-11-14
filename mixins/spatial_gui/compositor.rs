@@ -1,7 +1,7 @@
 // Native GUI extraction and world-space presentation. Injected below HudRenderer,
 // so the offscreen pass uses Horizon's exact item, text, glint and blend pipelines.
 use super::{Blend, HudBatch, HudRenderer};
-use crate::gfx::native_render::{RenderNeeds, WorldDrawn};
+use crate::gfx::native_render::{HandDrawn, RenderNeeds, WorldDrawn};
 use glam::{DVec3, Mat4, Vec2, Vec3};
 use std::{
     cell::{Cell, RefCell},
@@ -332,7 +332,7 @@ pub fn world_drawn(frame: &mut WorldDrawn<'_>) {
         }
         if ranges.is_empty() {
             for (i, &(start, id)) in frame.motion.iter().enumerate() {
-                if id == ((1_u64 << 32) | u64::from(player_id)) {
+                if id == (7_u64 << 32) || id == ((1_u64 << 32) | u64::from(player_id)) {
                     ranges.push(
                         start as usize
                             ..frame
@@ -354,151 +354,17 @@ pub fn world_drawn(frame: &mut WorldDrawn<'_>) {
                 }
             }
         }
-        let player_view = player.create_view(&Default::default());
-        let (player_layout, player_pipeline) =
-            cached_pipeline("avatar-depth", frame.device, || {
-                let player_shader =
-                    frame
-                        .device
-                        .create_shader_module(wgpu::ShaderModuleDescriptor {
-                            label: None,
-                            source: wgpu::ShaderSource::Wgsl(PLAYER_SHADER.into()),
-                        });
-                let bindings =
-                    frame
-                        .device
-                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                            label: None,
-                            entries: &[
-                                wgpu::BindGroupLayoutEntry {
-                                    binding: 0,
-                                    visibility: wgpu::ShaderStages::FRAGMENT,
-                                    ty: wgpu::BindingType::Texture {
-                                        sample_type: wgpu::TextureSampleType::Float {
-                                            filterable: true,
-                                        },
-                                        view_dimension: wgpu::TextureViewDimension::D2,
-                                        multisampled: false,
-                                    },
-                                    count: None,
-                                },
-                                wgpu::BindGroupLayoutEntry {
-                                    binding: 1,
-                                    visibility: wgpu::ShaderStages::FRAGMENT,
-                                    ty: wgpu::BindingType::Sampler(
-                                        wgpu::SamplerBindingType::Filtering,
-                                    ),
-                                    count: None,
-                                },
-                            ],
-                        });
-                let layout = frame
-                    .device
-                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: None,
-                        bind_group_layouts: &[Some(&bindings)],
-                        immediate_size: 0,
-                    });
-                let player_pipeline = frame.device.create_render_pipeline(
-                    &wgpu::RenderPipelineDescriptor {
-                        label: Some("Spatial GUI avatar mask"),
-                        layout: Some(&layout),
-                        vertex: wgpu::VertexState {
-                            module: &player_shader,
-                            entry_point: Some("vertex"),
-                            compilation_options: Default::default(),
-                            buffers: &[Some(wgpu::VertexBufferLayout {
-                                array_stride: 24,
-                                step_mode: wgpu::VertexStepMode::Vertex,
-                                attributes: &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x2],
-                            })],
-                        },
-                        fragment: Some(wgpu::FragmentState {
-                            module: &player_shader,
-                            entry_point: Some("fragment"),
-                            compilation_options: Default::default(),
-                            targets: &[Some(wgpu::ColorTargetState {
-                                format: wgpu::TextureFormat::R32Float,
-                                blend: None,
-                                write_mask: wgpu::ColorWrites::ALL,
-                            })],
-                        }),
-                        primitive: Default::default(),
-                        depth_stencil: Some(wgpu::DepthStencilState {
-                            format: wgpu::TextureFormat::Depth32Float,
-                            depth_write_enabled: Some(true),
-                            depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
-                            stencil: Default::default(),
-                            bias: Default::default(),
-                        }),
-                        multisample: Default::default(),
-                        multiview_mask: None,
-                        cache: None,
-                    },
-                );
-                (bindings, player_pipeline)
-            });
-        let atlas_view = frame.atlas.map(|t| t.create_view(&Default::default()));
-        let nearest = sampler(frame.device, false, false);
-        let player_group = atlas_view.as_ref().map(|view| {
-            frame.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &player_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&nearest),
-                    },
-                ],
-            })
-        });
-        let buffer = frame
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(if vertices.is_empty() {
-                    &[[0.0; 6]][..]
-                } else {
-                    &vertices
-                }),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-        let player_depth_view = player_depth.create_view(&Default::default());
-        {
-            let mut pass = frame
-                .encoder
-                .begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Spatial GUI avatar depth"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &player_view,
-                        resolve_target: None,
-                        depth_slice: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &player_depth_view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(0.0),
-                            store: wgpu::StoreOp::Discard,
-                        }),
-                        stencil_ops: None,
-                    }),
-                    ..Default::default()
-                });
-            if let Some(group) = &player_group {
-                pass.set_pipeline(&player_pipeline);
-                pass.set_bind_group(0, group, &[]);
-                pass.set_vertex_buffer(0, buffer.slice(..));
-                pass.draw(0..vertices.len() as u32, 0..1);
-            }
-        }
+        player_mask(
+            &mut MaskDraw {
+                device: frame.device,
+                encoder: frame.encoder,
+                atlas: frame.atlas,
+            },
+            &player,
+            &player_depth,
+            &vertices,
+            false,
+        );
         if blur_strength > 0.0 {
             frame.encoder.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {
@@ -535,11 +401,209 @@ pub fn world_drawn(frame: &mut WorldDrawn<'_>) {
     });
 }
 
+struct MaskDraw<'a> {
+    device: &'a wgpu::Device,
+    encoder: &'a mut wgpu::CommandEncoder,
+    atlas: Option<&'a wgpu::Texture>,
+}
+
+// The hand has its own projection and depth pass. Keep a separate sentinel in
+// the same silhouette texture: comparing its depth with world depth is invalid.
+pub fn hand_drawn(frame: &mut HandDrawn<'_>) {
+    STATE.with(|cell| {
+        let state = cell.borrow();
+        let Some(world) = state.world.as_ref() else {
+            return;
+        };
+        if frame.hand.is_empty() || world.size != frame.size {
+            return;
+        }
+        let mut vertices = Vec::new();
+        for quad in frame.hand.chunks_exact(4) {
+            for j in [0, 1, 2, 0, 2, 3] {
+                let q = frame.view_proj * Vec3::from_array(quad[j].pos).extend(1.0);
+                vertices.push([q.x, q.y, q.z, q.w, quad[j].uv[0], quad[j].uv[1]]);
+            }
+        }
+        player_mask(
+            &mut MaskDraw {
+                device: frame.device,
+                encoder: frame.encoder,
+                atlas: frame.atlas,
+            },
+            &world.player,
+            &world.player_depth,
+            &vertices,
+            true,
+        );
+    });
+}
+
+fn player_mask(
+    frame: &mut MaskDraw<'_>,
+    player: &wgpu::Texture,
+    player_depth: &wgpu::Texture,
+    vertices: &[[f32; 6]],
+    hand: bool,
+) {
+    let player_view = player.create_view(&Default::default());
+    let (player_layout, player_pipeline) = cached_pipeline(
+        if hand { "hand-mask" } else { "avatar-depth" },
+        frame.device,
+        || {
+            let player_shader = frame
+                .device
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: None,
+                    source: wgpu::ShaderSource::Wgsl(PLAYER_SHADER.into()),
+                });
+            let bindings =
+                frame
+                    .device
+                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        label: None,
+                        entries: &[
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 0,
+                                visibility: wgpu::ShaderStages::FRAGMENT,
+                                ty: wgpu::BindingType::Texture {
+                                    sample_type: wgpu::TextureSampleType::Float {
+                                        filterable: true,
+                                    },
+                                    view_dimension: wgpu::TextureViewDimension::D2,
+                                    multisampled: false,
+                                },
+                                count: None,
+                            },
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 1,
+                                visibility: wgpu::ShaderStages::FRAGMENT,
+                                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                                count: None,
+                            },
+                        ],
+                    });
+            let layout = frame
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &[Some(&bindings)],
+                    immediate_size: 0,
+                });
+            let player_pipeline =
+                frame
+                    .device
+                    .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                        label: Some("Spatial GUI avatar mask"),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module: &player_shader,
+                            entry_point: Some("vertex"),
+                            compilation_options: Default::default(),
+                            buffers: &[Some(wgpu::VertexBufferLayout {
+                                array_stride: 24,
+                                step_mode: wgpu::VertexStepMode::Vertex,
+                                attributes: &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x2],
+                            })],
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: &player_shader,
+                            entry_point: Some(if hand { "hand" } else { "fragment" }),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: wgpu::TextureFormat::R32Float,
+                                blend: None,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        primitive: Default::default(),
+                        depth_stencil: Some(wgpu::DepthStencilState {
+                            format: wgpu::TextureFormat::Depth32Float,
+                            depth_write_enabled: Some(true),
+                            depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+                            stencil: Default::default(),
+                            bias: Default::default(),
+                        }),
+                        multisample: Default::default(),
+                        multiview_mask: None,
+                        cache: None,
+                    });
+            (bindings, player_pipeline)
+        },
+    );
+    let atlas_view = frame.atlas.map(|t| t.create_view(&Default::default()));
+    let nearest = sampler(frame.device, false, false);
+    let player_group = atlas_view.as_ref().map(|view| {
+        frame.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &player_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&nearest),
+                },
+            ],
+        })
+    });
+    let buffer = frame
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(if vertices.is_empty() {
+                &[[0.0; 6]][..]
+            } else {
+                vertices
+            }),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+    let player_depth_view = player_depth.create_view(&Default::default());
+    {
+        let mut pass = frame
+            .encoder
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Spatial GUI avatar depth"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &player_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: if hand {
+                            wgpu::LoadOp::Load
+                        } else {
+                            wgpu::LoadOp::Clear(wgpu::Color::BLACK)
+                        },
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &player_depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                ..Default::default()
+            });
+        if let Some(group) = &player_group {
+            pass.set_pipeline(&player_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.set_vertex_buffer(0, buffer.slice(..));
+            pass.draw(0..vertices.len() as u32, 0..1);
+        }
+    }
+}
+
 /// Returns true when this invocation was replaced by the extracted-screen pass.
 pub fn draw(
     renderer: &HudRenderer,
     encoder: &mut wgpu::CommandEncoder,
     target: &wgpu::TextureView,
+    coverage: Option<&wgpu::TextureView>,
     depth: &wgpu::TextureView,
     batch: &HudBatch,
     size: [u32; 2],
@@ -569,11 +633,20 @@ pub fn draw(
         REENTRANT.with(|g| g.set(true));
         let _guard = Guard;
         if p.closing {
-            renderer.draw_range(encoder, target, depth, batch, size, range.clone(), None);
+            renderer.draw_range(
+                encoder,
+                target,
+                coverage,
+                depth,
+                batch,
+                size,
+                range.clone(),
+                None,
+            );
         } else {
             let before = range.start..range.end.min(p.start);
             if before.start < before.end {
-                renderer.draw_range(encoder, target, depth, batch, size, before, None);
+                renderer.draw_range(encoder, target, coverage, depth, batch, size, before, None);
             }
         }
         if state.drawn != p.frame {
@@ -630,10 +703,14 @@ pub fn draw(
                     .map(|(r, b)| {
                         (
                             r.clone(),
-                            if let Blend::Depth(clip) = b {
-                                Blend::Depth(clip.map(|v| (v as f32 * scale).round() as u32))
-                            } else {
-                                *b
+                            match b {
+                                Blend::Depth(clip) => {
+                                    Blend::Depth(clip.map(|v| (v as f32 * scale).round() as u32))
+                                }
+                                Blend::DepthGlint(clip) => Blend::DepthGlint(
+                                    clip.map(|v| (v as f32 * scale).round() as u32),
+                                ),
+                                _ => *b,
                             },
                         )
                     })
@@ -641,9 +718,12 @@ pub fn draw(
                 scaled.game_time = batch.game_time;
                 scaled.end_portal = batch.end_portal;
                 scaled.glint_alpha = batch.glint_alpha;
+                scaled.glint_colour = batch.glint_colour;
+                scaled.pictures = batch.pictures.clone();
                 renderer.draw_range(
                     encoder,
                     &view,
+                    None,
                     &gui_depth,
                     &scaled,
                     target_size,
@@ -652,7 +732,15 @@ pub fn draw(
                 );
             }
             if let (Some(world), Some(texture)) = (&state.world, &state.target) {
-                composite(world, texture, &p, encoder, target, renderer.format);
+                composite(
+                    world,
+                    texture,
+                    &p,
+                    encoder,
+                    target,
+                    coverage,
+                    renderer.format,
+                );
             }
             state.drawn = p.frame;
         }
@@ -660,6 +748,7 @@ pub fn draw(
             renderer.draw_range(
                 encoder,
                 target,
+                coverage,
                 depth,
                 batch,
                 size,
@@ -677,104 +766,129 @@ fn composite(
     p: &Presentation,
     encoder: &mut wgpu::CommandEncoder,
     target: &wgpu::TextureView,
+    coverage: Option<&wgpu::TextureView>,
     format: wgpu::TextureFormat,
 ) {
     let device = &world.device;
-    let (layout, pipeline) = cached_pipeline(&format!("composite:{format:?}"), device, || {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Spatial GUI world surface"),
-            source: wgpu::ShaderSource::Wgsl(SURFACE_SHADER.into()),
-        });
-        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+    let (layout, pipeline) = cached_pipeline(
+        &format!("composite:{format:?}:{}", coverage.is_some()),
+        device,
+        || {
+            let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Spatial GUI world surface"),
+                source: wgpu::ShaderSource::Wgsl(SURFACE_SHADER.into()),
+            });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+            let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
+            });
+            let mut targets = vec![Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })];
+            if coverage.is_some() {
+                let over = wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrc,
+                    operation: wgpu::BlendOperation::Add,
+                };
+                targets.push(Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R8Unorm,
+                    blend: Some(wgpu::BlendState {
+                        color: over,
+                        alpha: over,
+                    }),
+                    write_mask: wgpu::ColorWrites::RED,
+                }));
+            }
+            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Spatial GUI perspective composite"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vertex"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(wgpu::VertexBufferLayout {
+                        array_stride: 24,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x2],
+                    })],
                 },
-            ],
-        });
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[Some(&layout)],
-            immediate_size: 0,
-        });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Spatial GUI perspective composite"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vertex"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: 24,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0=>Float32x4,1=>Float32x2],
-                })],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fragment"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-        (layout, pipeline)
-    });
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some(if coverage.is_some() {
+                        "with_coverage"
+                    } else {
+                        "fragment"
+                    }),
+                    compilation_options: Default::default(),
+                    targets: &targets,
+                }),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: None,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: Default::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+            (layout, pipeline)
+        },
+    );
     let sampler = sampler(device, p.linear, p.anisotropic);
     let screen_view = screen.texture.create_view(&Default::default());
     let scene_view = world.depth.create_view(&Default::default());
@@ -862,17 +976,29 @@ fn composite(
                 },
             ],
         });
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Spatial GUI world-space panel"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: target,
+        let mut attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: target,
+            resolve_target: None,
+            depth_slice: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: wgpu::StoreOp::Store,
+            },
+        })];
+        if let Some(view) = coverage {
+            attachments.push(Some(wgpu::RenderPassColorAttachment {
+                view,
                 resolve_target: None,
                 depth_slice: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
                 },
-            })],
+            }));
+        }
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Spatial GUI world-space panel"),
+            color_attachments: &attachments,
             ..Default::default()
         });
         pass.set_pipeline(&pipeline);
@@ -1069,9 +1195,271 @@ struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
  c+=(textureSampleLevel(image,linear,o.uv+direction*1.384615,0.)+textureSampleLevel(image,linear,o.uv-direction*1.384615,0.))*.316216;
  c+=(textureSampleLevel(image,linear,o.uv+direction*3.230769,0.)+textureSampleLevel(image,linear,o.uv-direction*3.230769,0.))*.070270;
  if params.w<.5{let pixel=clamp(vec2<i32>(o.p.xy),vec2(0),vec2<i32>(textureDimensions(scene))-vec2(1));let d=textureLoad(scene,pixel,0).r;let avatar=textureLoad(player,pixel,0).r;if avatar>0.&&abs(avatar-d)<.0001{return textureSampleLevel(sharp,linear,o.uv,0.);}}
- return c;
+  return vec4(c.rgb,textureSampleLevel(sharp,linear,o.uv,0.).a);
 }
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn overlap_opacity_applies_to_avatar_and_first_person_hand() {
+        let instance = wgpu::Instance::default();
+        let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&Default::default())).unwrap();
+        let size = [16, 16];
+        let rgba = wgpu::TextureFormat::Rgba8Unorm;
+        let image = texture(&device, size, rgba, "overlap test GUI");
+        let atlas = texture(&device, [1, 1], rgba, "overlap test atlas");
+        let write = |texture: &wgpu::Texture, data: &[u8], bytes_per_row, size: [u32; 2]| {
+            queue.write_texture(
+                texture.as_image_copy(),
+                data,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: None,
+                },
+                wgpu::Extent3d {
+                    width: size[0],
+                    height: size[1],
+                    depth_or_array_layers: 1,
+                },
+            );
+        };
+        write(&image, &[255, 0, 0, 255].repeat(256), 64, size);
+        write(&atlas, &[255; 4], 4, [1, 1]);
+        let world = World {
+            device: device.clone(),
+            depth: texture(
+                &device,
+                size,
+                wgpu::TextureFormat::R32Float,
+                "test scene depth",
+            ),
+            player: texture(
+                &device,
+                size,
+                wgpu::TextureFormat::R32Float,
+                "test avatar mask",
+            ),
+            player_depth: texture(
+                &device,
+                size,
+                wgpu::TextureFormat::Depth32Float,
+                "test mask depth",
+            ),
+            color: texture(&device, size, rgba, "test sharp"),
+            blur: texture(&device, size, rgba, "test blur"),
+            size,
+            camera: DVec3::ZERO,
+            view_proj: Mat4::IDENTITY,
+        };
+        let screen = Target {
+            device: device.clone(),
+            texture: image,
+            depth: texture(
+                &device,
+                size,
+                wgpu::TextureFormat::Depth32Float,
+                "test GUI depth",
+            ),
+            size,
+            format: rgba,
+        };
+        let mut p = Presentation {
+            frame: 1,
+            start: 0,
+            end: 6,
+            surface: Surface {
+                center: DVec3::new(0.0, 0.0, 0.5),
+                rotation: glam::Quat::IDENTITY,
+                width: 2.0,
+                height: 2.0,
+                arc: 0.0,
+                gui: [16.0; 2],
+            },
+            opacity: 1.0,
+            blur: 0.0,
+            tint: [1.0; 3],
+            render_scale: 1.0,
+            linear: false,
+            anisotropic: false,
+            shadow_layers: 0,
+            shadow_alpha: 0.0,
+            shadow_scale: 1.0,
+            shadow_offset: [0.0; 3],
+            player_front: true,
+            over_player_alpha: 50.0 / 255.0,
+            player_id: 0,
+            closing: false,
+        };
+        let output = texture(&device, size, rgba, "overlap test output");
+        let view = output.create_view(&Default::default());
+        let coverage = texture(
+            &device,
+            size,
+            wgpu::TextureFormat::R8Unorm,
+            "test HDR coverage",
+        );
+        let coverage_view = coverage.create_view(&Default::default());
+        let readback = device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: 256 * 32,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        // The hand's depth (.2) deliberately differs from the scene's (.8):
+        // it must use its own projection/mask, not a world-depth comparison.
+        for hdr in [false, true] {
+            for (hand, front, alpha, scene_depth, expected) in [
+                (false, true, 0, 0.8, 0),
+                (false, true, 50, 0.8, 50),
+                (false, true, 255, 0.8, 255),
+                (false, false, 0, 0.8, 255),
+                (true, true, 0, 0.8, 0),
+                (true, true, 50, 0.8, 50),
+                (true, true, 255, 0.8, 255),
+                (false, true, 255, 0.9, 0),
+            ] {
+                p.player_front = front;
+                p.over_player_alpha = alpha as f32 / 255.0;
+                write(
+                    &world.depth,
+                    bytemuck::cast_slice(&[scene_depth as f32; 256]),
+                    64,
+                    size,
+                );
+                let z = if hand { 0.2 } else { 0.8 };
+                let vertices = [
+                    [-1., -1., z, 1., 0., 0.],
+                    [1., -1., z, 1., 1., 0.],
+                    [1., 1., z, 1., 1., 1.],
+                    [-1., -1., z, 1., 0., 0.],
+                    [1., 1., z, 1., 1., 1.],
+                    [-1., 1., z, 1., 0., 1.],
+                ];
+                let mut encoder = device.create_command_encoder(&Default::default());
+                // First clear the world mask, then add a hand without erasing it.
+                player_mask(
+                    &mut MaskDraw {
+                        device: &device,
+                        encoder: &mut encoder,
+                        atlas: Some(&atlas),
+                    },
+                    &world.player,
+                    &world.player_depth,
+                    if hand { &[] } else { &vertices },
+                    false,
+                );
+                if hand {
+                    player_mask(
+                        &mut MaskDraw {
+                            device: &device,
+                            encoder: &mut encoder,
+                            atlas: Some(&atlas),
+                        },
+                        &world.player,
+                        &world.player_depth,
+                        &vertices,
+                        true,
+                    );
+                }
+                {
+                    let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        color_attachments: &[
+                            Some(wgpu::RenderPassColorAttachment {
+                                view: &view,
+                                resolve_target: None,
+                                depth_slice: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            }),
+                            Some(wgpu::RenderPassColorAttachment {
+                                view: &coverage_view,
+                                resolve_target: None,
+                                depth_slice: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            }),
+                        ],
+                        ..Default::default()
+                    });
+                }
+                composite(
+                    &world,
+                    &screen,
+                    &p,
+                    &mut encoder,
+                    &view,
+                    hdr.then_some(&coverage_view),
+                    rgba,
+                );
+                encoder.copy_texture_to_buffer(
+                    output.as_image_copy(),
+                    wgpu::TexelCopyBufferInfo {
+                        buffer: &readback,
+                        layout: wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(256),
+                            rows_per_image: None,
+                        },
+                    },
+                    wgpu::Extent3d {
+                        width: 16,
+                        height: 16,
+                        depth_or_array_layers: 1,
+                    },
+                );
+                if hdr {
+                    encoder.copy_texture_to_buffer(
+                        coverage.as_image_copy(),
+                        wgpu::TexelCopyBufferInfo {
+                            buffer: &readback,
+                            layout: wgpu::TexelCopyBufferLayout {
+                                offset: 4096,
+                                bytes_per_row: Some(256),
+                                rows_per_image: None,
+                            },
+                        },
+                        wgpu::Extent3d {
+                            width: 16,
+                            height: 16,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                }
+                queue.submit([encoder.finish()]);
+                readback
+                    .slice(..)
+                    .map_async(wgpu::MapMode::Read, |result| result.unwrap());
+                device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+                {
+                    let data = readback.slice(..).get_mapped_range().unwrap();
+                    let red = data[8 * 256 + 8 * 4];
+                    assert!(
+                        (i32::from(red) - expected).abs() <= 1,
+                        "hand={hand}, player_front={front}, alpha={alpha}: red={red}"
+                    );
+                    if hdr {
+                        let covered = data[4096 + 8 * 256 + 8];
+                        assert!(
+                            (i32::from(covered) - expected).abs() <= 1,
+                            "HDR coverage={covered}, expected={expected}"
+                        );
+                    }
+                }
+                readback.unmap();
+            }
+        }
+    }
+}
 const DEPTH_SHADER: &str = r#"
 @group(0) @binding(0) var scene:texture_depth_2d;
 struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
@@ -1088,6 +1476,7 @@ const PLAYER_SHADER: &str = r#"
 struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
 @vertex fn vertex(@location(0) p:vec4<f32>,@location(1) uv:vec2<f32>)->Out{var o:Out;o.p=p;o.uv=uv;return o;}
 @fragment fn fragment(o:Out)->@location(0) f32{if textureSampleLevel(atlas,nearest,o.uv,0.).a<0.1{discard;}return o.p.z;}
+@fragment fn hand(o:Out)->@location(0) f32{if textureSampleLevel(atlas,nearest,o.uv,0.).a<0.1{discard;}return 2.;}
 "#;
 const SURFACE_SHADER: &str = r#"
 @group(0) @binding(0) var screen:texture_2d<f32>;
@@ -1098,10 +1487,10 @@ struct Params{tint:vec4<f32>,size:vec4<f32>,shadow:vec4<f32>}
 @group(0) @binding(4) var<uniform> params:Params;
 struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
 @vertex fn vertex(@location(0) p:vec4<f32>,@location(1) uv:vec2<f32>)->Out{var o:Out;o.p=p;o.uv=uv;return o;}
-@fragment fn fragment(o:Out)->@location(0) vec4<f32>{
+fn shade(o:Out)->vec4<f32>{
  let pixel=clamp(vec2<i32>(o.p.xy),vec2(0),vec2<i32>(textureDimensions(scene))-vec2(1));
  let d=textureLoad(scene,pixel,0).r;let avatar=textureLoad(player,pixel,0).r;
- var occluded=false;var factor=1.;if avatar>0.&&abs(avatar-d)<0.0001{if params.size.w>0.{factor=params.size.z;}}else if o.p.z+0.00001<d{occluded=true;}
+  var occluded=false;var factor=1.;if avatar>1.||(avatar>0.&&abs(avatar-d)<0.0001){if params.size.w>0.{factor=params.size.z;}}else if o.p.z+0.00001<d{occluded=true;}
  var c=textureSample(screen,filtered,o.uv);
  if params.shadow.x>0.{let texel=1./vec2<f32>(textureDimensions(screen));var a=c.a;
   a+=textureSample(screen,filtered,o.uv+vec2(texel.x*params.shadow.z,0.)).a;
@@ -1109,6 +1498,9 @@ struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
   a+=textureSample(screen,filtered,o.uv+vec2(0.,texel.y*params.shadow.z)).a;
   a+=textureSample(screen,filtered,o.uv-vec2(0.,texel.y*params.shadow.z)).a;c=vec4(0.,0.,0.,a*.2*params.shadow.y);
  }else{c=vec4(c.rgb*params.tint.rgb,c.a);}
- c*=params.tint.a*factor;if occluded||c.a<0.001{discard;}return c;
+  c*=params.tint.a*factor;if occluded||c.a<0.001{discard;}return c;
 }
+@fragment fn fragment(o:Out)->@location(0) vec4<f32>{return shade(o);}
+struct Covered{@location(0) color:vec4<f32>,@location(1) coverage:f32}
+@fragment fn with_coverage(o:Out)->Covered{let c=shade(o);var result:Covered;result.color=c;result.coverage=c.a;return result;}
 "#;

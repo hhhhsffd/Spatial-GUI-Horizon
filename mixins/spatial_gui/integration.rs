@@ -15,22 +15,8 @@ use horizon_client::{
 };
 use std::{cell::RefCell, fs, path::PathBuf, sync::atomic::Ordering, time::Instant};
 pub(super) const ID: &str = "spatial_gui";
-pub(super) const VERSION: &str = "0.2.2";
-#[derive(Clone, Copy, Debug)]
-pub(super) struct Camera {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
-}
-impl Camera {
-    fn interpolate(self, to: Self, t: f32) -> Self {
-        Self {
-            position: self.position.lerp(to.position, f64::from(t)),
-            yaw: self.yaw + wrap(to.yaw - self.yaw) * t,
-            pitch: self.pitch + (to.pitch - self.pitch) * t,
-        }
-    }
-}
+pub(super) const VERSION: &str = "0.2.3";
+pub(super) use super::spatial_motion::Camera;
 #[derive(Clone, Debug)]
 pub(super) struct Identity {
     pub key: String,
@@ -50,8 +36,10 @@ pub(super) struct Session {
     pub opened: Option<Instant>,
     pub closing: Option<Instant>,
     pub start: Option<Camera>,
+    pub start_feet: DVec3,
     pub camera: Option<Camera>,
     pub close_start: Option<Camera>,
+    pub close_feet: DVec3,
     pub anchor_yaw: f32,
     pub anchor_pitch: f32,
     pub look: Vec2,
@@ -99,8 +87,10 @@ impl Default for Session {
             opened: None,
             closing: None,
             start: None,
+            start_feet: DVec3::ZERO,
             camera: None,
             close_start: None,
+            close_feet: DVec3::ZERO,
             anchor_yaw: 0.0,
             anchor_pitch: 0.0,
             look: Vec2::ZERO,
@@ -137,9 +127,6 @@ impl Default for Session {
     }
 }
 thread_local! {pub(super) static STATE:RefCell<Session>=RefCell::new(Session::default());}
-pub(super) fn wrap(v: f32) -> f32 {
-    (v + 180.0).rem_euclid(360.0) - 180.0
-}
 pub(super) fn load(_game: &Game<'_>) {
     STATE.with(|cell| {
         let mut s = cell.borrow_mut();
@@ -330,12 +317,16 @@ fn allowed(c: &Config, id: &Identity) -> bool {
             _ => c.all_screens || contains(&c.enabled_screens),
         }
 }
-fn eye(game: &Game<'_>) -> Option<DVec3> {
+fn player_position(game: &Game<'_>, partial: f64) -> Option<DVec3> {
     let p = game.player.as_ref()?;
-    Some(DVec3::new(
-        p.position.x,
-        p.position.y + f64::from(p.dimensions.eye_height),
-        p.position.z,
+    Some(super::spatial_motion::player_position(
+        [
+            game.previous_position.x,
+            game.previous_position.y,
+            game.previous_position.z,
+        ],
+        [p.position.x, p.position.y, p.position.z],
+        partial,
     ))
 }
 fn forward(yaw: f32, pitch: f32) -> Vec3 {
@@ -343,20 +334,29 @@ fn forward(yaw: f32, pitch: f32) -> Vec3 {
     let (sp, cp) = pitch.to_radians().sin_cos();
     Vec3::new(-sy * cp, -sp, cy * cp)
 }
-fn natural_camera(game: &Game<'_>) -> Option<Camera> {
-    let p = game.native_camera();
-    Some(Camera {
-        position: p
-            .as_ref()
-            .map_or(eye(game)?, |p| DVec3::from_array(p.position)),
-        yaw: p.as_ref().map_or(game.yaw, |p| p.yaw),
-        pitch: p.as_ref().map_or(game.pitch, |p| p.pitch),
+fn natural_camera(game: &mut Game<'_>) -> Option<Camera> {
+    // native_camera() is the previous rendered frame here. Sample the current
+    // vanilla camera instead; never feed our last spatial camera back into open.
+    STATE.with(|cell| cell.borrow_mut().camera_passthrough = true);
+    let current = game.camera_type;
+    if let Some(original) = STATE.with(|cell| cell.borrow().saved_camera) {
+        game.camera_type = original;
+    }
+    let view = game.camera_view(game.clock.camera_fraction() as f32);
+    game.camera_type = current;
+    STATE.with(|cell| cell.borrow_mut().camera_passthrough = false);
+    view.map(|(position, yaw, pitch)| Camera {
+        position,
+        yaw,
+        pitch,
     })
 }
 pub(super) fn frame(game: &mut Game<'_>) {
     load(game);
     let observed = identity(game);
-    let natural = natural_camera(game);
+    let opening = STATE.with(|cell| cell.borrow().identity.is_none()) && observed.is_some();
+    let natural = if opening { natural_camera(game) } else { None };
+    let feet = player_position(game, game.own_player_alpha());
     let native_on = game.native_on(ID);
     let now = Instant::now();
     let mut capture = None;
@@ -394,6 +394,7 @@ pub(super) fn frame(game: &mut Game<'_>) {
             if s.config.enable_close_animation && s.presentation.is_some() {
                 s.closing = Some(now);
                 s.close_start = s.camera;
+                s.close_feet = feet.unwrap_or_default();
             }
             s.identity = None;
             s.editor.end();
@@ -413,7 +414,12 @@ pub(super) fn frame(game: &mut Game<'_>) {
                 let resuming = s.closing.is_some();
                 s.opened = Some(now);
                 s.closing = None;
-                s.start = natural;
+                s.start = if resuming {
+                    s.camera.or(natural)
+                } else {
+                    natural
+                };
+                s.start_feet = feet.unwrap_or_default();
                 if !resuming {
                     s.anchor_yaw = game.yaw;
                     s.anchor_pitch = game.pitch;
@@ -460,10 +466,11 @@ pub(super) fn frame(game: &mut Game<'_>) {
             reset(game, &mut s);
             return;
         }
-        let Some(eye) = eye(game) else {
+        let Some(feet) = feet else {
             reset(game, &mut s);
             return;
         };
+        let eye = feet + DVec3::Y * f64::from(game.player.as_ref().unwrap().dimensions.eye_height);
         let elapsed = s
             .opened
             .map_or(0.0, |t| now.duration_since(t).as_secs_f32() * 1000.0);
@@ -554,7 +561,7 @@ pub(super) fn frame(game: &mut Game<'_>) {
                 * (1.0 + (1.0 / ratio - 1.0) * c.auto_scale_side_offset_multiplier))
                 .clamp(-4.0, 4.0)
                 * mirror;
-            let base = game.player.as_ref().unwrap().position;
+            let base = feet;
             let flying = game.player.as_ref().is_some_and(|p| p.fall_flying);
             let side = side
                 + if flying {
@@ -610,7 +617,10 @@ pub(super) fn frame(game: &mut Game<'_>) {
             camera.yaw += s.editor.orbit.x;
             camera.pitch = (camera.pitch + s.editor.orbit.y).clamp(-89.0, 89.0);
         }
-        camera = s.start.unwrap_or(camera).interpolate(camera, transition);
+        camera = s
+            .start
+            .unwrap_or(camera)
+            .interpolate(camera, transition, feet - s.start_feet);
         if s.closing.is_some() {
             let progress = (close / c.transition_duration_ms.max(1) as f32).clamp(0.0, 1.0);
             camera = s.close_start.unwrap_or(camera).interpolate(
@@ -620,6 +630,7 @@ pub(super) fn frame(game: &mut Game<'_>) {
                     pitch: game.pitch,
                 },
                 1.0 - (1.0 - progress).powi(3),
+                feet - s.close_feet,
             );
             if close
                 >= c.transition_duration_ms
@@ -732,7 +743,7 @@ pub(super) fn frame(game: &mut Game<'_>) {
             rotation,
             width: scale * w / h,
             height: scale,
-            arc: if first && c.curved_screen_enabled {
+            arc: if c.curved_screen_enabled {
                 (c.curved_screen_arc_degrees as f32).to_radians()
             } else {
                 0.0
@@ -807,6 +818,8 @@ fn reset(game: &mut Game<'_>, s: &mut Session) {
     s.identity = None;
     s.opened = None;
     s.closing = None;
+    s.start = None;
+    s.close_start = None;
     s.camera = None;
     s.presentation = None;
     s.editor.end();
@@ -835,9 +848,10 @@ pub(super) fn camera(game: &mut Game<'_>, partial: f32) -> Option<(DVec3, f32, f
             s.close_start,
             s.saved_camera,
             s.config.transition_duration_ms,
+            s.close_feet,
         ))
     })?;
-    let (mut c, closing, start, original, duration) = desired;
+    let (mut c, closing, start, original, duration, close_feet) = desired;
     if let Some(closed) = closing {
         STATE.with(|s| s.borrow_mut().camera_passthrough = true);
         let current = game.camera_type;
@@ -857,9 +871,11 @@ pub(super) fn camera(game: &mut Game<'_>, partial: f32) -> Option<(DVec3, f32, f
                     pitch,
                 },
                 1.0 - (1.0 - t).powi(3),
+                player_position(game, f64::from(partial))? - close_feet,
             );
         }
     }
+    STATE.with(|cell| cell.borrow_mut().camera = Some(c));
     game.view.position = c.position.to_array();
     game.view.set_rotation(c.yaw, c.pitch);
     Some((c.position, c.yaw, c.pitch))
@@ -1115,7 +1131,7 @@ pub(super) fn capture(game: &Game<'_>, batch: &mut HudBatch) {
                 c.drop_shadow_vertical_offset,
                 c.drop_shadow_depth_offset,
             ],
-            player_front: c.render_player_in_front,
+            player_front: s.first || c.render_player_in_front,
             over_player_alpha: c.screen_over_player_alpha as f32 / 255.0,
             player_id,
             closing,
@@ -1211,14 +1227,8 @@ pub(super) fn fov(_game: &Game<'_>, degrees: &mut f32) {
         }
     });
 }
-pub(super) fn blur(_game: &Game<'_>, vanilla: Option<f32>) -> Option<f32> {
-    STATE.with(|s| {
-        if s.borrow().surface.is_some() {
-            None
-        } else {
-            vanilla
-        }
-    })
+pub(super) fn suppress_blur() -> bool {
+    STATE.with(|s| s.borrow().surface.is_some())
 }
 pub(super) fn hide_hand(
     _game: &Game<'_>,

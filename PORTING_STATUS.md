@@ -1,14 +1,14 @@
 # Rust port implementation coverage
 
-Upstream reference: `88eeb54a262eff78ac2857995d8d9d1dd533dd22`.
+Original full-port reference: `88eeb54a262eff78ac2857995d8d9d1dd533dd22`. Rendering fixes reviewed through `abfe5ae9c46dac0fdcfa09f46c89598db791eead` (2026-11-14). The later world-effect filters and separate screen-manager UI are new features, not part of this bug-fix update.
 
-The 0.2.2 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. Implementation was completed before the new validation pass; the earlier 0.1.0 test results do not establish 0.2.0 correctness. See VALIDATION.md for the checks actually run.
+The 0.2.3 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. See VALIDATION.md for version-specific checks actually run.
 
 | Area | Native implementation |
 | --- | --- |
-| Configuration | All 100 upstream fields, JSON5 import, categorized settings with scroll/forward/backward mouse controls, bounds and key rebinding |
-| Renderer | Offscreen native GUI extraction, perspective-correct world surface, world and local player depth, filtering, shadows, lightmap tint, independent render resolution and GUI scale, world-only blur |
-| Camera | Anchored first/third person, offsets, smooth opening/closing, collision fallback, mirror/parallax, elytra offsets, FOV scaling and saved-perspective restoration |
+| Configuration | All 100 fields from the original reference, JSON5 import, categorized settings with scroll/forward/backward mouse controls, bounds and key rebinding |
+| Renderer | Offscreen native GUI extraction, forward/backward curvature in both perspectives, world and local player/hand silhouettes, configurable overlap opacity, filtering, shadows, lightmap tint, independent render resolution and GUI scale, world-only blur and HDR HUD coverage |
+| Camera | Anchored first/third person on the renderer's interpolated player position, player-relative opening/closing transitions, collision fallback, mirror/parallax, elytra offsets, FOV scaling and saved-perspective restoration |
 | Input | Crosshair/free cursor, relative mouse look, inverse ray mapping, scrolling/dragging and logical controller navigation with projected cursor |
 | Animation | Seven easing modes, fade/scale/open/close, hand poke/swing and local avatar body/head posing |
 | Editor | Mouse gizmos and sliders, screen movement and camera orbit, wheel scaling, undo/redo/undo-all, preview, GUI scale, save/default |

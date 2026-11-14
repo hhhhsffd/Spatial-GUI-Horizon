@@ -1,3 +1,3 @@
-fn spatial_relative(app: &crate::game::App, event: &winit::event::DeviceEvent) {
-    if let crate::game::App::Ready(game) = app { crate::game::spatial_controls::relative(&game.host,event); }
+fn spatial_relative(game: &crate::game::Game<'_>, event: &winit::event::DeviceEvent) {
+    crate::game::spatial_controls::relative(game,event);
 }

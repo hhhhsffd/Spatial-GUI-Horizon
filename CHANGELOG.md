@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3
+
+- Fixed avatar wobble when opening menus while running or falling: camera and panel now follow the same interpolated player position as the rendered model.
+- Opening and closing transition anchors move with the player instead of lagging at their old world positions.
+- Updated compatibility to the latest published Horizon nightly, `nightly-2026-11-13-9f42064`, and horizon-mixins `e59da9094f0c`.
+- Fixed configurable screen opacity over first-person hands and current Horizon's local-player geometry identification. `renderPlayerInFront` and `screenOverPlayerAlpha` remain configurable.
+- Applied upstream backward/third-person curvature and scaled item/glint clipping fixes; kept native picture and glint state during GUI extraction.
+- Added HDR HUD coverage for spatial panels and preserved the world's HDR alpha marks during blur.
+
 ## 0.2.2
 
 - Added mouse-wheel changes to settings and categories: up increases/next, down decreases/previous.
