@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test, stage/check/build against Horizon, or deterministically package the .hnmod."""
+"""Test, stage/check/build against Horizon, or deterministically package the unified .hmod."""
 import argparse
 import filecmp
 import hashlib
@@ -14,7 +14,9 @@ import uuid
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPAT = json.loads((ROOT / "compatibility.json").read_text())
+NATIVE = tomllib.loads((ROOT / "horizon-mod.toml").read_text())["native"]
+COMPAT = dict(game=NATIVE["game"], horizon_revision=NATIVE["horizon"],
+              horizon_mixins_revision=NATIVE["mixins"])
 
 
 def run(command, **kwargs):
@@ -93,19 +95,20 @@ def prepare_source(source, target, cargo, env):
 
 
 def package():
-    bundle = ROOT / "mixins/spatial_gui"
-    manifest = tomllib.loads((bundle / "horizon-mixin.toml").read_text())
-    version = manifest["mod"]["version"]
-    assert manifest["compatibility"]["horizon_revision"] == COMPAT["horizon_revision"]
-    # Deliberately omit `hooks`: private integration needs this exact revision.
-    metadata = dict(schema=1, id="spatial_gui", version=version, game=COMPAT["game"],
-                    horizon=COMPAT["horizon_revision"], mixins=COMPAT["horizon_mixins_revision"])
-    files = {"horizon-native.json": (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode()}
-    for path in sorted(bundle.rglob("*")):
+    """Pack the flat source project; no generated legacy manifests enter the archive."""
+    manifest = tomllib.loads((ROOT / "horizon-mod.toml").read_text())
+    version = manifest["version"]
+    assert tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"] == version
+    files = {}
+    for name in ("horizon-mod.toml", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md"):
+        files[name] = (ROOT / name).read_bytes()
+    files["NOTICE-THIRD-PARTY.md"] = (ROOT / "THIRD_PARTY_NOTICES.md").read_bytes()
+    for path in sorted((ROOT / "src").rglob("*")):
         if path.is_file() and path.suffix in (".toml", ".rs"):
-            files[f"mixins/spatial_gui/{path.relative_to(bundle).as_posix()}"] = path.read_bytes()
-    files["mixins/spatial_gui/LICENSE"] = (ROOT / "LICENSE").read_bytes()
-    out = ROOT / f"dist/spatial_gui-{version}.hnmod"
+            files[path.relative_to(ROOT).as_posix()] = path.read_bytes()
+    for entry in manifest["native"]["module"] + manifest["native"]["mixin"]:
+        assert entry.get("source", entry.get("helper")) in files
+    out = ROOT / f"dist/spatial_gui-{version}.hmod"
     out.parent.mkdir(exist_ok=True)
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(files.items()):
@@ -115,13 +118,30 @@ def package():
             archive.writestr(info, data)
     with zipfile.ZipFile(out) as archive:
         assert archive.testzip() is None
-        assert json.loads(archive.read("horizon-native.json")) == metadata
-        for entry in manifest["module"] + manifest["injection"]:
-            name = entry.get("source", entry.get("helper"))
-            assert f"mixins/spatial_gui/{name}" in archive.namelist()
+        assert tomllib.loads(archive.read("horizon-mod.toml").decode()) == manifest
     digest = hashlib.sha256(out.read_bytes()).hexdigest()
-    out.with_suffix(".hnmod.sha256").write_text(f"{digest}  {out.name}\n")
+    out.with_suffix(".hmod.sha256").write_text(f"{digest}  {out.name}\n")
     print(json.dumps(dict(file=str(out), size=out.stat().st_size, sha256=digest), indent=2))
+
+
+def legacy_stage(target):
+    """Translate the unified manifest only for a disposable full-source developer build.
+
+    The published launcher's function-replacement route cannot host this mod's
+    renderer support modules. This deliberately uses the original source compiler.
+    """
+    text = (ROOT / "horizon-mod.toml").read_text()
+    manifest = tomllib.loads(text)
+    header = (f'[mod]\nid = "{manifest["id"]}"\nversion = "{manifest["version"]}"\npriority = 100\n'
+              f'\n[compatibility]\nhorizon_revision = "{manifest["native"]["horizon"]}"\n')
+    rows = text[text.index("[[native.module]]"):]
+    rows = rows.replace("[[native.module]]", "[[module]]").replace("[[native.mixin]]", "[[injection]]")
+    mods = target / "generated-mixins"
+    bundle = mods / manifest["id"]
+    bundle.mkdir(parents=True, exist_ok=True)
+    (bundle / "horizon-mixin.toml").write_text(header + rows, encoding="utf-8")
+    shutil.copytree(ROOT / "src", bundle / "src", dirs_exist_ok=True)
+    return mods
 
 
 def main():
@@ -170,12 +190,13 @@ def main():
     target.mkdir(exist_ok=True)
     env["CARGO_TARGET_DIR"] = str((args.target_dir or target / "horizon-cargo").resolve())
     source = prepare_source(source, target, cargo, env)
+    mods = legacy_stage(target)
     if args.action == "plan":
-        run([mixins, "plan", "--workspace", source, "--mods", ROOT / "mixins", "--out", target / "plan.json"], env=env)
+        run([mixins, "plan", "--workspace", source, "--mods", mods, "--out", target / "plan.json"], env=env)
         return
     stage = target / "horizon-stage"
     fresh = target / f"horizon-stage-new-{uuid.uuid4().hex}"
-    run([mixins, "apply", "--workspace", source, "--mods", ROOT / "mixins", "--out", fresh], env=env)
+    run([mixins, "apply", "--workspace", source, "--mods", mods, "--out", fresh], env=env)
     sync_stage(fresh, stage)
     run([cargo, args.action, "--locked", "--profile", args.profile,
          "-p", "horizon-official", "--bin", "horizon-official"], cwd=stage, env=env)

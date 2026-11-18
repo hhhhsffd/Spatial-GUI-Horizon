@@ -2,7 +2,7 @@
 
 Original full-port reference: `88eeb54a262eff78ac2857995d8d9d1dd533dd22`. Rendering fixes reviewed through `abfe5ae9c46dac0fdcfa09f46c89598db791eead` (2026-11-14). The later world-effect filters and separate screen-manager UI are new features, not part of this bug-fix update.
 
-The 0.2.4 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. The release includes a Windows x64 compiled game and complete corresponding source; Import Build bypasses the current launcher source-staging blocker. See VALIDATION.md for version-specific checks actually run.
+The 0.2.5 runtime is entirely Rust, compiled into Horizon through declarative native source mixins. Python is confined to developer tooling. The release includes a Windows x64 compiled game and complete corresponding source; The flat `.hmod` source package validates, while the new launcher native route cannot host the renderer modules. Import Build or the full-source build is required; see docs/HMOD-MIGRATION.md. See VALIDATION.md for version-specific checks actually run.
 
 | Area | Native implementation |
 | --- | --- |

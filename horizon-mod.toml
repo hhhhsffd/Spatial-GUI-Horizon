@@ -1,144 +1,153 @@
-[mod]
 id = "spatial_gui"
-version = "0.2.4"
-priority = 100
+name = "Spatial GUI"
+version = "0.2.5"
+description = "World-space menus, inverse pointer mapping, profiles and visual editor"
+authors = ["Spatial GUI Horizon contributors", "tastytrash (original mod)"]
+license = "MIT"
+homepage = "https://github.com/hhhhsffd/Spatial-GUI-Horizon"
+issues = "https://github.com/hhhhsffd/Spatial-GUI-Horizon/issues"
+api = "0.2"
+side = "client"
+capabilities = ["registries"]
 
-[compatibility]
-horizon_revision = "0b14f8acfd97fa2c750e42795249dcc981178ca4"
+[native]
+game = "26.3"
+horizon = "0b14f8acfd97fa2c750e42795249dcc981178ca4"
+mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
 
-[[module]]
+[[native.module]]
 id = "settings_ui"
 file = "crates/horizon-client-render/src/options_ui.rs"
 name = "spatial_settings_input"
-source = "settings_ui.rs"
+source = "src/native/settings_ui.rs"
 
-[[module]]
+[[native.module]]
 id = "config"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_config"
-source = "config.rs"
+source = "src/native/config.rs"
 
-[[module]]
+[[native.module]]
 id = "editor"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_editor"
-source = "editor.rs"
+source = "src/native/editor.rs"
 
-[[module]]
+[[native.module]]
 id = "integration"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_integration"
-source = "integration.rs"
+source = "src/native/integration.rs"
 
-[[module]]
+[[native.module]]
 id = "controls"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_controls"
-source = "controls.rs"
+source = "src/native/controls.rs"
 
-[[module]]
+[[native.module]]
 id = "compat"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_compat"
-source = "compat.rs"
+source = "src/native/compat.rs"
 
-[[module]]
+[[native.module]]
 id = "geometry"
 file = "crates/horizon-client-render/src/hud.rs"
 name = "spatial_math"
-source = "geometry.rs"
+source = "src/native/geometry.rs"
 visibility = "pub"
 
-[[module]]
+[[native.module]]
 id = "avatar"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_avatar"
-source = "avatar.rs"
+source = "src/native/avatar.rs"
 
-[[module]]
+[[native.module]]
 id = "motion"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_motion"
-source = "motion.rs"
+source = "src/native/motion.rs"
 
-[[module]]
+[[native.module]]
 id = "surface"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_surface"
-source = "surface.rs"
+source = "src/native/surface.rs"
 
-[[module]]
+[[native.module]]
 id = "compositor"
 file = "crates/horizon-client-render/src/hud.rs"
 name = "spatial_gui"
-source = "compositor.rs"
+source = "src/native/compositor.rs"
 visibility = "pub"
 
-[[injection]]
+[[native.mixin]]
 id = "frame"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::render_frame_pre::Game<'_>::native_render_frame_pre"
-helper = "frame.rs"
+helper = "src/native/frame.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "input"
 kind = "HEAD"
 target = "horizon_client::game::Game<'_>::handle_window_event_inner"
-helper = "input.rs"
+helper = "src/native/input.rs"
 cancellable = true
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
   { name = "event", ty = "&mut winit::event::WindowEvent", value = "&mut event" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "relative"
 kind = "HEAD"
 target = "horizon_client::game::window_handler::<Game<'_> as ApplicationHandler>::device_event"
-helper = "relative.rs"
+helper = "src/native/relative.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "event", ty = "&winit::event::DeviceEvent", value = "&event" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "camera"
 kind = "HEAD"
 target = "horizon_client::game::perspective::Game<'_>::camera_view"
-helper = "camera.rs"
+helper = "src/native/camera.rs"
 cancellable = true
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
   { name = "partial", ty = "f32", value = "partial" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "orientation"
 kind = "HEAD"
 target = "horizon_client::game::Game<'_>::camera_orientation"
-helper = "orientation.rs"
+helper = "src/native/orientation.rs"
 cancellable = true
 bindings = [
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "pause"
 kind = "HEAD"
 target = "horizon_client::game::pointer_capture::Game<'_>::pauses_game"
-helper = "pause.rs"
+helper = "src/native/pause.rs"
 cancellable = true
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "key"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_key_pressed_pre"
-helper = "key.rs"
+helper = "src/native/key.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "key", ty = "&str", value = "key" },
@@ -146,401 +155,401 @@ bindings = [
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "key_release"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_key_released_pre"
-helper = "key_release.rs"
+helper = "src/native/key_release.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "key", ty = "&str", value = "key" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_hud"
 kind = "HEAD"
 target = "horizon_client::game::Game<'_>::hud_layers"
-helper = "begin_hud.rs"
+helper = "src/native/begin_hud.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_inventory"
 kind = "HEAD"
 target = "horizon_client::game::inventory_slots::Game<'_>::draw_inventory"
-helper = "begin_inventory.rs"
+helper = "src/native/begin_inventory.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_creative"
 kind = "HEAD"
 target = "horizon_client::game::creative_screen::Game<'_>::draw_creative"
-helper = "begin_creative.rs"
+helper = "src/native/begin_creative.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_options"
 kind = "HEAD"
 target = "horizon_client::game::options::Game<'_>::draw_options"
-helper = "begin_options.rs"
+helper = "src/native/begin_options.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_pause_menu"
 kind = "HEAD"
 target = "horizon_client::game::screens::Game<'_>::draw_pause_menu"
-helper = "begin_pause_menu.rs"
+helper = "src/native/begin_pause_menu.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_death_screen"
 kind = "HEAD"
 target = "horizon_client::game::screens::Game<'_>::draw_death_screen"
-helper = "begin_death_screen.rs"
+helper = "src/native/begin_death_screen.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_stats"
 kind = "HEAD"
 target = "horizon_client::game::stats_screen::Game<'_>::draw_stats"
-helper = "begin_stats.rs"
+helper = "src/native/begin_stats.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_advancements"
 kind = "HEAD"
 target = "horizon_client::game::advancements_screen::Game<'_>::draw_advancements"
-helper = "begin_advancements.rs"
+helper = "src/native/begin_advancements.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_world_options"
 kind = "HEAD"
 target = "horizon_client::game::lan_screen::Game<'_>::draw_world_options"
-helper = "begin_world_options.rs"
+helper = "src/native/begin_world_options.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_social_screen"
 kind = "HEAD"
 target = "horizon_client::game::social::Game<'_>::draw_social_screen"
-helper = "begin_social_screen.rs"
+helper = "src/native/begin_social_screen.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_server_links"
 kind = "HEAD"
 target = "horizon_client::game::server_links::Game<'_>::draw_server_links"
-helper = "begin_server_links.rs"
+helper = "src/native/begin_server_links.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_confirm_link"
 kind = "HEAD"
 target = "horizon_client::game::server_links::Game<'_>::draw_confirm_link"
-helper = "begin_confirm_link.rs"
+helper = "src/native/begin_confirm_link.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_dialog_warning"
 kind = "HEAD"
 target = "horizon_client::game::server_links::Game<'_>::draw_dialog_warning"
-helper = "begin_dialog_warning.rs"
+helper = "src/native/begin_dialog_warning.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_command_block"
 kind = "HEAD"
 target = "horizon_client::game::command_blocks::Game<'_>::draw_command_block"
-helper = "begin_command_block.rs"
+helper = "src/native/begin_command_block.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_block_editor"
 kind = "HEAD"
 target = "horizon_client::game::block_editor::Game<'_>::draw_block_editor"
-helper = "begin_block_editor.rs"
+helper = "src/native/begin_block_editor.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_debug_options"
 kind = "HEAD"
 target = "horizon_client::game::debug_options::Game<'_>::draw_debug_options"
-helper = "begin_debug_options.rs"
+helper = "src/native/begin_debug_options.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_chat_screen"
 kind = "HEAD"
 target = "horizon_client::game::chat::Game<'_>::draw_chat_screen"
-helper = "begin_chat_screen.rs"
+helper = "src/native/begin_chat_screen.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_gamemode_switcher"
 kind = "HEAD"
 target = "horizon_client::game::gamemode_switcher::Game<'_>::draw_gamemode_switcher"
-helper = "begin_gamemode_switcher.rs"
+helper = "src/native/begin_gamemode_switcher.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_book"
 kind = "HEAD"
 target = "horizon_client::game::books::Game<'_>::draw_book"
-helper = "begin_book.rs"
+helper = "src/native/begin_book.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_sign_editor"
 kind = "HEAD"
 target = "horizon_client::game::sign_edit::Game<'_>::draw_sign_editor"
-helper = "begin_sign_editor.rs"
+helper = "src/native/begin_sign_editor.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_dialog"
 kind = "HEAD"
 target = "horizon_client::game::dialogs::Game<'_>::draw_dialog"
-helper = "begin_dialog.rs"
+helper = "src/native/begin_dialog.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_pack_prompt"
 kind = "HEAD"
 target = "horizon_client::game::server_packs::Game<'_>::draw_pack_prompt"
-helper = "begin_pack_prompt.rs"
+helper = "src/native/begin_pack_prompt.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_win_screen"
 kind = "HEAD"
 target = "horizon_client::game::win::Game<'_>::draw_win_screen"
-helper = "begin_win_screen.rs"
+helper = "src/native/begin_win_screen.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_code_of_conduct"
 kind = "HEAD"
 target = "horizon_client::game::code_of_conduct::Game<'_>::draw_code_of_conduct"
-helper = "begin_code_of_conduct.rs"
+helper = "src/native/begin_code_of_conduct.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_link_prompt"
 kind = "HEAD"
 target = "horizon_client::game::chat::Game<'_>::draw_link_prompt"
-helper = "begin_link_prompt.rs"
+helper = "src/native/begin_link_prompt.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "begin_command_prompt"
 kind = "HEAD"
 target = "horizon_client::game::remote_chat::Game<'_>::draw_command_prompt"
-helper = "begin_command_prompt.rs"
+helper = "src/native/begin_command_prompt.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "mod_begin"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_render_post"
-helper = "mod_begin.rs"
+helper = "src/native/mod_begin.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *draw" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "screen_end"
 kind = "HEAD"
 target = "horizon_client::game::titles::Game<'_>::draw_saving_indicator"
-helper = "screen_end.rs"
+helper = "src/native/screen_end.rs"
 bindings = [
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "draw"
 kind = "HEAD"
 target = "horizon_client::game::narrator::Game<'_>::draw_narrator_toast"
-helper = "draw.rs"
+helper = "src/native/draw.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "pad_cursor"
 kind = "HEAD"
 target = "horizon_client::game::pad_menu::Game<'_>::draw_pad_cursor"
-helper = "pad_cursor.rs"
+helper = "src/native/pad_cursor.rs"
 cancellable = true
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "blur"
 kind = "HEAD"
 target = "horizon_client::game::screen_backgrounds::Game<'_>::menu_blur"
-helper = "blur.rs"
+helper = "src/native/blur.rs"
 cancellable = true
 bindings = [
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "fov"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::base::Game<'_>::native_compute_fov"
-helper = "fov.rs"
+helper = "src/native/fov.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "degrees", ty = "&mut f32", value = "&mut *degrees" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "hand"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::render_hand::Game<'_>::native_render_hand"
-helper = "hand.rs"
+helper = "src/native/hand.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "render", ty = "&mut mod_api::HandRender<'_>", value = "&mut *render" },
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "hud"
 kind = "HEAD"
 target = "horizon_client::game::native_hooks::base::Game<'_>::native_gui_layer_pre"
-helper = "hud.rs"
+helper = "src/native/hud.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "layer", ty = "&str", value = "layer" },
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "settings"
 kind = "RETURN"
 target = "horizon_client::game::options::Game<'_>::options_mouse"
-helper = "settings.rs"
+helper = "src/native/settings.rs"
 bindings = [
   { name = "value", ty = "Result<()>", value = "$value" },
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "settings_key"
 kind = "RETURN"
 target = "horizon_client::game::options::Game<'_>::options_key"
-helper = "settings_key.rs"
+helper = "src/native/settings_key.rs"
 bindings = [
   { name = "value", ty = "Result<()>", value = "$value" },
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "list"
 kind = "RETURN"
 target = "horizon_client::game::options::Game<'_>::open_options_at"
-helper = "list.rs"
+helper = "src/native/list.rs"
 bindings = [
   { name = "value", ty = "()", value = "$value" },
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "setting_label"
 kind = "HEAD"
 target = "horizon_client_render::options_ui::mod_setting_label"
-helper = "setting_label.rs"
+helper = "src/native/setting_label.rs"
 cancellable = true
 bindings = [
   { name = "setting", ty = "&crate::mod_list::NativeSetting", value = "setting" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "gui_batch"
 kind = "MODIFY_ARG"
 target = "horizon_client_render::hud::HudBatch::new"
-helper = "gui_batch.rs"
+helper = "src/native/gui_batch.rs"
 bindings = [
   { name = "requested", ty = "u32", value = "$value" },
 ]
@@ -549,47 +558,47 @@ require = 1
 ordinal = 0
 argument = 1
 
-[[injection]]
+[[native.mixin]]
 id = "render_needs"
 kind = "RETURN"
 target = "horizon_client_render::render_slots::needs"
-helper = "render_needs.rs"
+helper = "src/native/render_needs.rs"
 bindings = [
   { name = "needs", ty = "RenderNeeds", value = "$value" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "world_drawn"
 kind = "HEAD"
 target = "horizon_client_render::render_slots::world_drawn"
-helper = "world_drawn.rs"
+helper = "src/native/world_drawn.rs"
 bindings = [
   { name = "world", ty = "&mut crate::render_slots::WorldDrawn<'_>", value = "&mut *world" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "hand_drawn"
 kind = "HEAD"
 target = "horizon_client_render::render_slots::hand_drawn"
-helper = "hand_drawn.rs"
+helper = "src/native/hand_drawn.rs"
 bindings = [
   { name = "hand", ty = "&mut crate::render_slots::HandDrawn<'_>", value = "&mut *hand" },
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "render_hooked"
 kind = "HEAD"
 target = "horizon_client_render::render_slots::world_drawn_hooked"
-helper = "render_hooked.rs"
+helper = "src/native/render_hooked.rs"
 cancellable = true
 bindings = [
 ]
 
-[[injection]]
+[[native.mixin]]
 id = "render"
 kind = "HEAD"
 target = "horizon_client_render::hud::HudRenderer::draw_range"
-helper = "render.rs"
+helper = "src/native/render.rs"
 cancellable = true
 bindings = [
   { name = "renderer", ty = "&crate::hud::HudRenderer", value = "&*self" },

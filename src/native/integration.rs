@@ -15,7 +15,7 @@ use horizon_client::{
 };
 use std::{cell::RefCell, fs, path::PathBuf, time::Instant};
 pub(super) const ID: &str = "spatial_gui";
-pub(super) const VERSION: &str = "0.2.4";
+pub(super) const VERSION: &str = "0.2.5";
 pub(super) use super::spatial_motion::Camera;
 #[derive(Clone, Debug)]
 pub(super) struct Identity {

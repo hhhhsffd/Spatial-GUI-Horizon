@@ -1,13 +1,21 @@
-#[path = "../mixins/spatial_gui/config.rs"]
+#[path = "native/config.rs"]
 pub mod config;
-#[path = "../mixins/spatial_gui/geometry.rs"]
+#[path = "native/geometry.rs"]
 pub mod geometry;
 
 pub use config as spatial_config;
 pub use geometry as spatial_surface;
-#[path = "../mixins/spatial_gui/avatar.rs"]
+#[path = "native/avatar.rs"]
 pub mod avatar;
-#[path = "../mixins/spatial_gui/editor.rs"]
+#[path = "native/editor.rs"]
 pub mod editor;
-#[path = "../mixins/spatial_gui/motion.rs"]
+#[path = "native/motion.rs"]
 pub mod motion;
+
+// Native-route support code is compiled into the game by the source-build helper.
+// The flat package also exposes the factory required by the unified native format.
+#[derive(Default)]
+struct SpatialGui;
+
+#[mod_api::horizon_mod]
+impl mod_api::Hooks for SpatialGui {}

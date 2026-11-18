@@ -1,9 +1,9 @@
-# Rebuilding the Spatial GUI 0.2.4 Windows game
+# Rebuilding the Spatial GUI 0.2.5 Windows game
 
 This archive is the complete corresponding source for the optional Windows x64 game ZIP.
 It includes the exact transformed Horizon source (`horizon/`) and locked dependency source
 (`vendor/`), including licenses. Horizon is LGPL-3.0-or-later; Spatial GUI's original code is MIT.
-The normal `.hnmod` remains source-only and does not contain Horizon.
+The normal `.hmod` remains source-only and does not contain Horizon.
 
 Base: Horizon `0b14f8acfd97fa2c750e42795249dcc981178ca4`, Mixins
 `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`, Minecraft data version 26.3.
@@ -12,7 +12,7 @@ The mod's 52 injections and 11 support modules are already applied; no mixin too
 to rebuild this archive. Original source and transformation tools are also available at:
 
 - https://github.com/horizon-rust/horizon/tree/0b14f8acfd97fa2c750e42795249dcc981178ca4
-- https://github.com/hhhhsffd/Spatial-GUI-Horizon/tree/v0.2.4
+- https://github.com/hhhhsffd/Spatial-GUI-Horizon/tree/v0.2.5
 
 ## Windows GNU rebuild
 
