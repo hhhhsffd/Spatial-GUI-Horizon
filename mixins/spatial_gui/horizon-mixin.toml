@@ -1,10 +1,10 @@
 [mod]
 id = "spatial_gui"
-version = "0.2.3"
+version = "0.2.4"
 priority = 100
 
 [compatibility]
-horizon_revision = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
+horizon_revision = "0b14f8acfd97fa2c750e42795249dcc981178ca4"
 
 [[module]]
 id = "settings_ui"
@@ -35,6 +35,12 @@ id = "controls"
 file = "crates/horizon-client/src/game.rs"
 name = "spatial_controls"
 source = "controls.rs"
+
+[[module]]
+id = "compat"
+file = "crates/horizon-client/src/game.rs"
+name = "spatial_compat"
+source = "compat.rs"
 
 [[module]]
 id = "geometry"
@@ -71,7 +77,7 @@ visibility = "pub"
 [[injection]]
 id = "frame"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_frame"
+target = "horizon_client::game::native_hooks::render_frame_pre::Game<'_>::native_render_frame_pre"
 helper = "frame.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
@@ -131,7 +137,7 @@ bindings = [
 [[injection]]
 id = "key"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_screen_key_pressed_pre"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_key_pressed_pre"
 helper = "key.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
@@ -143,12 +149,11 @@ bindings = [
 [[injection]]
 id = "key_release"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_key_event"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_key_released_pre"
 helper = "key_release.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "key", ty = "winit::keyboard::KeyCode", value = "key" },
-  { name = "pressed", ty = "bool", value = "pressed" },
+  { name = "key", ty = "&str", value = "key" },
 ]
 
 [[injection]]
@@ -163,7 +168,7 @@ bindings = [
 [[injection]]
 id = "begin_inventory"
 kind = "HEAD"
-target = "horizon_client::game::Game<'_>::draw_inventory"
+target = "horizon_client::game::inventory_slots::Game<'_>::draw_inventory"
 helper = "begin_inventory.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
@@ -186,7 +191,7 @@ kind = "HEAD"
 target = "horizon_client::game::options::Game<'_>::draw_options"
 helper = "begin_options.rs"
 bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
   { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
 ]
 
@@ -413,11 +418,11 @@ bindings = [
 [[injection]]
 id = "mod_begin"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_screen_render_post"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_screen_render_post"
 helper = "mod_begin.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *draw" },
 ]
 
 [[injection]]
@@ -462,7 +467,7 @@ bindings = [
 [[injection]]
 id = "fov"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_compute_fov"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_compute_fov"
 helper = "fov.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
@@ -472,30 +477,18 @@ bindings = [
 [[injection]]
 id = "hand"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_render_hand"
+target = "horizon_client::game::native_hooks::render_hand::Game<'_>::native_render_hand"
 helper = "hand.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "stack", ty = "Option<&horizon_client::items::ItemStack>", value = "stack" },
+  { name = "render", ty = "&mut mod_api::HandRender<'_>", value = "&mut *render" },
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
-]
-
-[[injection]]
-id = "hand_pose"
-kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_render_hand_pose"
-helper = "hand_pose.rs"
-bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "hand", ty = "horizon_client::first_person::Hand", value = "hand" },
-  { name = "z", ty = "&mut f32", value = "&mut *z" },
-  { name = "pitch", ty = "&mut f32", value = "&mut *pitch" },
 ]
 
 [[injection]]
 id = "hud"
 kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_gui_layer_pre"
+target = "horizon_client::game::native_hooks::base::Game<'_>::native_gui_layer_pre"
 helper = "hud.rs"
 bindings = [
   { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
@@ -505,60 +498,91 @@ bindings = [
 
 [[injection]]
 id = "settings"
-kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_settings"
+kind = "RETURN"
+target = "horizon_client::game::options::Game<'_>::options_mouse"
 helper = "settings.rs"
 bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
-  { name = "mod_id", ty = "&str", value = "mod_id" },
-  { name = "buttons", ty = "&mut Vec<String>", value = "&mut *buttons" },
+  { name = "value", ty = "Result<()>", value = "$value" },
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
 [[injection]]
-id = "click"
-kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_settings_click"
-helper = "click.rs"
+id = "settings_key"
+kind = "RETURN"
+target = "horizon_client::game::options::Game<'_>::options_key"
+helper = "settings_key.rs"
 bindings = [
+  { name = "value", ty = "Result<()>", value = "$value" },
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
-  { name = "mod_id", ty = "&str", value = "mod_id" },
-  { name = "button", ty = "usize", value = "button" },
 ]
 
 [[injection]]
 id = "list"
-kind = "HEAD"
-target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+kind = "RETURN"
+target = "horizon_client::game::options::Game<'_>::open_options_at"
 helper = "list.rs"
 bindings = [
-  { name = "mods", ty = "&mut Vec<crate::game::native_hooks::NativeMod>", value = "&mut *mods" },
+  { name = "value", ty = "()", value = "$value" },
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
 [[injection]]
-id = "render_needs"
+id = "setting_label"
 kind = "HEAD"
-target = "horizon_client_render::gfx::native_render::native_render_needs"
+target = "horizon_client_render::options_ui::mod_setting_label"
+helper = "setting_label.rs"
+cancellable = true
+bindings = [
+  { name = "setting", ty = "&crate::mod_list::NativeSetting", value = "setting" },
+]
+
+[[injection]]
+id = "gui_batch"
+kind = "MODIFY_ARG"
+target = "horizon_client_render::hud::HudBatch::new"
+helper = "gui_batch.rs"
+bindings = [
+  { name = "requested", ty = "u32", value = "$value" },
+]
+selector = "horizon_client_input::window::GuiSize::new"
+require = 1
+ordinal = 0
+argument = 1
+
+[[injection]]
+id = "render_needs"
+kind = "RETURN"
+target = "horizon_client_render::render_slots::needs"
 helper = "render_needs.rs"
 bindings = [
-  { name = "needs", ty = "&mut crate::gfx::native_render::RenderNeeds", value = "&mut *needs" },
+  { name = "needs", ty = "RenderNeeds", value = "$value" },
 ]
 
 [[injection]]
 id = "world_drawn"
 kind = "HEAD"
-target = "horizon_client_render::gfx::native_render::native_world_drawn"
+target = "horizon_client_render::render_slots::world_drawn"
 helper = "world_drawn.rs"
 bindings = [
-  { name = "world", ty = "&mut crate::gfx::native_render::WorldDrawn<'_>", value = "&mut *world" },
+  { name = "world", ty = "&mut crate::render_slots::WorldDrawn<'_>", value = "&mut *world" },
 ]
 
 [[injection]]
 id = "hand_drawn"
 kind = "HEAD"
-target = "horizon_client_render::gfx::native_render::native_hand_drawn"
+target = "horizon_client_render::render_slots::hand_drawn"
 helper = "hand_drawn.rs"
 bindings = [
-  { name = "hand", ty = "&mut crate::gfx::native_render::HandDrawn<'_>", value = "&mut *hand" },
+  { name = "hand", ty = "&mut crate::render_slots::HandDrawn<'_>", value = "&mut *hand" },
+]
+
+[[injection]]
+id = "render_hooked"
+kind = "HEAD"
+target = "horizon_client_render::render_slots::world_drawn_hooked"
+helper = "render_hooked.rs"
+cancellable = true
+bindings = [
 ]
 
 [[injection]]

@@ -465,7 +465,7 @@ pub(super) fn input(game: &mut Game<'_>, event: &mut WindowEvent) -> bool {
     let Some(size) = size else {
         return false;
     };
-    let batch = HudBatch::new(size);
+    let batch = HudBatch::new(size, game.settings.gui_scale_inputs());
     match event {
         WindowEvent::CursorMoved { position, .. } => {
             let raw = Vec2::new(
@@ -648,7 +648,7 @@ pub(super) fn relative(game: &Game<'_>, event: &DeviceEvent) {
 /// All other areas retain Horizon's normal list scrolling and key rebinding.
 fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
     use horizon_client::options_ui::Page;
-    let Page::NativeMod(index) = game.ui.options.page() else {
+    let Page::NativeMod(_) = game.ui.options.page() else {
         STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
         return false;
     };
@@ -697,7 +697,9 @@ fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
     });
     if !adjustable {
         STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
-        return false;
+        // Actions and list editors have no previous value. Let the wheel
+        // scroll the list, but consume right-click rather than activating them.
+        return wheel.is_none();
     }
     let steps = STATE.with(|cell| {
         let mut s = cell.borrow_mut();
@@ -723,7 +725,8 @@ fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
         for _ in 0..steps.unsigned_abs() {
             settings_step(game, button, f64::from(steps.signum()));
         }
-        game.native_settings_refresh(index);
+        runtime::load(game);
+        super::spatial_compat::refresh(game);
     }
     true
 }
@@ -837,7 +840,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Release Space to return to the editor",
             [8.0, 8.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
         return;
@@ -859,7 +862,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Spatial GUI | G move / R rotate / S scale | Space preview | F8 save",
             [5.0, 6.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -900,7 +903,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             &control.text,
             [control.rect[0] + 3.0, control.rect[1] + 4.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -915,7 +918,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
         let x = batch.width * 0.5 - 130.0;
         let y = batch.height * 0.5 - 70.0;
         game.native_fill(batch, [x, y, 260.0, 85.0], 0xf020_2020);
-        game.native_text(batch, title, [x + 5.0, y + 6.0], 0xffffff, true);
+        game.native_text(batch, title, [x + 5.0, y + 6.0], 0xffff_ffff, true);
         let capacity = 46;
         let rows: Vec<String> = text
             .lines()
@@ -932,7 +935,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
                 batch,
                 row,
                 [x + 5.0, y + 21.0 + i as f32 * 10.0],
-                0xffe0a0,
+                0xffff_e0a0,
                 true,
             );
         }
@@ -998,7 +1001,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Wheel: size | Middle drag: move | Right drag: orbit | Ctrl+Z/Y: undo/redo",
             [5.0, batch.height - 12.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -1007,7 +1010,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             &s.editor.notice,
             [8.0, batch.height - 24.0],
-            0xffd080,
+            0xffff_d080,
             true,
         );
     }
@@ -1039,11 +1042,11 @@ pub(super) fn screen_key(game: &Game<'_>, name: &str, repeat: bool, canceled: &m
         }
     });
 }
-pub(super) fn released(game: &Game<'_>, key: winit::keyboard::KeyCode, pressed: bool) {
+pub(super) fn released(game: &Game<'_>, key: &str, pressed: bool) {
     if pressed || !game.native_on(ID) {
         return;
     }
-    if horizon_client::keybinds::key_name(key) == Some("key.keyboard.space") {
+    if key == "key.keyboard.space" {
         STATE.with(|cell| {
             let mut s = cell.borrow_mut();
             if s.editor.active {

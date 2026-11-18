@@ -1,4 +1,48 @@
-# Validation of Spatial GUI 0.2.3
+# Validation of Spatial GUI 0.2.4
+
+Target checked on 2026-11-18: **`nightly-2026-11-18-0b14f8a`**, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`; mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. The nightly SDK independently confirms the game commit, Minecraft 26.3, and Rust 1.99.1. The published source archive was checked against its SHA-256 (`1219e1196fefb481a8d459d03c86678d14623b73b3764aa59cd15dbcb010219f`).
+
+- All **17 core tests passed**.
+- All **three focused renderer tests passed**: scrolled/clipped settings hit targets, key-binding/other-page/scrollbar guards, and GUI scale override/reset with Unicode and independent offscreen batches.
+- Native mixin staging succeeds after the developer source preparation described below: **52 injections and 11 support modules**.
+- `python tools/port.py check --horizon-source <November-18-source> --mixins <pinned-tool> --target-dir <shared-cache>`: **passed** for the complete `horizon-official` executable target, using the prepared source copy.
+- The optimized `horizon-official` game build **passed**, including a fresh rebuild after adapting editor/profile text to the new explicit-ARGB native text helper.
+- Core/editor Clippy with warnings denied and changed support-code rustfmt checks **passed**.
+- The final bundle passed `cargo horizon-mod check`, ZIP integrity and metadata/pin checks. Its packaged Rust/manifest files match the source. It contains **66 entries**, is **66,757 bytes**, and has SHA-256 `e87053b1ea0a4bc679f91189d164a464abf7e557dea1984960ebe4e18efe1c39`.
+- The release-packaging behavioral test **passed**, checking the executable trailer, native metadata, bundled dependency licenses, source-cache exclusions and relocatable vendoring configuration.
+
+## Launcher staging blocker
+
+Horizon now generates its game/native module lists through OUT_DIR includes. The launcher materializes those before calling its pinned mixin tool. On the November 18 source, that tool then refuses the game's own `../../creatures/biome_facts.rs` path with `E_INVALID_PATH: expected a nonempty relative path without '.' or '..'`. This occurs before the mod's injections can be applied.
+
+The developer helper now calls Horizon's own `materialize_game_modules` on a disposable source copy, then inlines the moved creature area modules without changing their logical Rust scopes. It rejects source links outside the checkout and refuses to inline a moved module containing further external module declarations. The downloaded source archive/cache and launcher are left unchanged. The unmodified launcher still cannot build the `.hnmod` alone on this nightly.
+
+## Compiled-game installation workaround
+
+The Windows x64 release also supplies an unsigned, modified Horizon executable. Import Build bypasses source staging without patching the user's launcher or caches. Published launchers still identify games using the former API-level marker, so the packaged executable appends a non-executable **level-zero import identity** in its PE overlay. It retains the new `horizon-game-executable;` identity; the trailer does not claim old WASM API support. The source archive's rebuild helper reproduces the trailer.
+
+An isolated launcher **0.2.78** accepted this compatibility-marked executable on `nightly-2026-11-18-0b14f8a`. It rejected the unmarked November 18 executable, confirming the need for the trailer. Import Build copies only the executable, not the informative `native-mods.json` in the download.
+
+The user's existing launcher executable also imported the **final tested binary** into the isolated prepared base as `imported-2026-11-18-d01f85f`; the installed executable was byte-identical and the launcher reported `prepared: true`. The test's partial local asset cache lacked one sound object, so the optional sound-copy step warned; game testing used `HORIZON_NO_AUDIO=1`.
+
+The complete corresponding-source archive contains the transformed Horizon tree and all locked Cargo dependency sources with their licenses. An extracted archive resolved **500 packages completely offline with an empty Cargo home**. This verifies dependency availability, not a fresh clean-room recompilation or bit-identical executable reproduction.
+
+## Runtime validation
+
+The final rebuilt, compatibility-marked executable ran offscreen at 1280x720 on an NVIDIA RTX 2080 (Vulkan), with fresh isolated game, home, launcher and XDG directories. It ran **without a `native-mods.json` beside the executable**, matching what Import Build installs.
+
+- Prepared fresh November 18 resources from the existing local Minecraft copy into the isolated base. Older prepared tables were insufficient (`fluid_state_definitions Missing`); no player resources or worlds were overwritten.
+- Opened the creative inventory, selected Spatial GUI in the Mods page, and opened its categorized Config page. The widgets exposed category/actions and current scalar settings.
+- Opened/closed the editor. The new native text API initially made labels fully transparent; the ARGB fix restored them. `tools/check_editor_capture.ps1` observed **2,094 bright header pixels**, versus **0** on the pre-fix capture (requires more than 50).
+- Opened the menu while sprinting, with confirmed horizontal velocity about **0.148 blocks/tick**.
+- Reloaded JSON5 settings, rendered a first-person **-60 degree curved panel**, GUI scale override and held diamond sword, and reopened/closed the curved editor.
+- Returned to gameplay and saved/stopped the isolated game, with no panic or GPU validation error in its log. Runtime evidence is in `target/runtime-0.2.4-e589ce4c`.
+
+This does not establish compatibility with other native mods, every screen/controller/shader pack, Linux/macOS, or every HDR display. The precompiled build contains only Spatial GUI.
+
+---
+
+## Historical validation of Spatial GUI 0.2.3
 
 Checked on 2026-11-14 against **Horizon `nightly-2026-11-13-9f42064`**, revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` (latest published game nightly at the time), and horizon-mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
 

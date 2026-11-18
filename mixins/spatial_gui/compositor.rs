@@ -1,7 +1,7 @@
 // Native GUI extraction and world-space presentation. Injected below HudRenderer,
 // so the offscreen pass uses Horizon's exact item, text, glint and blend pipelines.
 use super::{Blend, HudBatch, HudRenderer};
-use crate::gfx::native_render::{HandDrawn, RenderNeeds, WorldDrawn};
+use crate::render_slots::{HandDrawn, RenderNeeds, WorldDrawn};
 use glam::{DVec3, Mat4, Vec2, Vec3};
 use std::{
     cell::{Cell, RefCell},
@@ -82,8 +82,20 @@ pub fn view() -> Option<(DVec3, Mat4, [u32; 2])> {
             .map(|w| (w.camera, w.view_proj, w.size))
     })
 }
+thread_local! {
+    static GUI_SCALE_OVERRIDE: Cell<Option<u32>> = const { Cell::new(None) };
+}
+pub fn set_gui_scale(requested: Option<u32>) {
+    GUI_SCALE_OVERRIDE.with(|scale| scale.set(requested));
+}
+pub fn gui_scale(requested: u32) -> u32 {
+    GUI_SCALE_OVERRIDE.with(|scale| scale.get().unwrap_or(requested))
+}
+pub fn active() -> bool {
+    STATE.with(|s| s.borrow().presentation.is_some())
+}
 pub fn needs(needs: &mut RenderNeeds) {
-    if STATE.with(|s| s.borrow().presentation.is_some()) {
+    if active() {
         needs.world_depth = true;
         needs.entity_spans = true;
     }
@@ -695,7 +707,7 @@ pub fn draw(
                         ..Default::default()
                     });
                 }
-                let mut scaled = HudBatch::new(size);
+                let mut scaled = HudBatch::scratch(size);
                 scaled.vertices = batch.vertices.clone();
                 scaled.blends = batch
                     .blends
@@ -1202,6 +1214,38 @@ struct Out{@builtin(position) p:vec4<f32>,@location(0) uv:vec2<f32>}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gui_scale_override_resets_and_keeps_unicode_and_scratch_scaling() {
+        let size = [1280, 720];
+        let inputs = crate::hud::GuiScale {
+            requested: 1,
+            unicode: false,
+        };
+        set_gui_scale(None);
+        assert_eq!(HudBatch::new(size, inputs).scale, 1.0);
+        set_gui_scale(Some(3));
+        let panel = HudBatch::new(size, inputs);
+        assert_eq!(
+            (panel.scale, panel.width, panel.height),
+            (3.0, 427.0, 240.0)
+        );
+        assert_eq!(
+            HudBatch::new(
+                size,
+                crate::hud::GuiScale {
+                    unicode: true,
+                    ..inputs
+                }
+            )
+            .scale,
+            4.0
+        );
+        set_gui_scale(Some(1));
+        assert_eq!(HudBatch::scratch(size).scale, 3.0);
+        set_gui_scale(None);
+        assert_eq!(HudBatch::new(size, inputs).scale, 1.0);
+    }
 
     #[test]
     fn overlap_opacity_applies_to_avatar_and_first_person_hand() {
