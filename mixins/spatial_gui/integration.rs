@@ -1204,7 +1204,7 @@ pub(super) fn capture(game: &Game<'_>, batch: &mut HudBatch) {
                 batch,
                 "Press ` to choose a Spatial GUI profile",
                 [8.0, batch.height - 12.0],
-                0xeeeeee,
+                0xffee_eeee,
                 true,
             );
         }

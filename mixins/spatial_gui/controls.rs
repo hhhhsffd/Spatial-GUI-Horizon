@@ -840,7 +840,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Release Space to return to the editor",
             [8.0, 8.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
         return;
@@ -862,7 +862,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Spatial GUI | G move / R rotate / S scale | Space preview | F8 save",
             [5.0, 6.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -903,7 +903,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             &control.text,
             [control.rect[0] + 3.0, control.rect[1] + 4.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -918,7 +918,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
         let x = batch.width * 0.5 - 130.0;
         let y = batch.height * 0.5 - 70.0;
         game.native_fill(batch, [x, y, 260.0, 85.0], 0xf020_2020);
-        game.native_text(batch, title, [x + 5.0, y + 6.0], 0xffffff, true);
+        game.native_text(batch, title, [x + 5.0, y + 6.0], 0xffff_ffff, true);
         let capacity = 46;
         let rows: Vec<String> = text
             .lines()
@@ -935,7 +935,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
                 batch,
                 row,
                 [x + 5.0, y + 21.0 + i as f32 * 10.0],
-                0xffe0a0,
+                0xffff_e0a0,
                 true,
             );
         }
@@ -1001,7 +1001,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             "Wheel: size | Middle drag: move | Right drag: orbit | Ctrl+Z/Y: undo/redo",
             [5.0, batch.height - 12.0],
-            0xffffff,
+            0xffff_ffff,
             true,
         );
     }
@@ -1010,7 +1010,7 @@ pub(super) fn paint(game: &Game<'_>, batch: &mut HudBatch, s: &mut Session) {
             batch,
             &s.editor.notice,
             [8.0, batch.height - 24.0],
-            0xffd080,
+            0xffff_d080,
             true,
         );
     }
