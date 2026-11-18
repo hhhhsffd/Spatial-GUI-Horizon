@@ -14,7 +14,8 @@ impl OptionsUi {
         };
         if settings.mods.installed.get(index)?.id != "spatial_gui"
             || self.selected_key.is_some()
-            || self.selected_native_key.is_some()
+            || self.selected_mod_key.is_some()
+            || self.selected_page_key.is_some()
             || self.scrollbar_drag_y.is_some()
             || self.resource_error.is_some()
         {
@@ -24,7 +25,7 @@ impl OptionsUi {
         widgets.into_iter().find_map(|widget| match widget.kind {
             WKind::Button {
                 active: true,
-                act: Act::NativeButton(owner, button),
+                act: Act::NativeSetting(owner, button),
                 ..
             } if owner == index
                 && ui::hovered(cursor, widget.x, widget.y, widget.w, widget.h)
@@ -50,8 +51,18 @@ mod tests {
             problem: None,
             dev: false,
             native: Some(crate::mod_list::NativePage {
-                keys: vec![["editor".into(), "Editor".into(), "key.keyboard.f8".into()]],
-                buttons: (0..40).map(|i| format!("Setting {i}")).collect(),
+                mappings: Vec::new(),
+                settings: (0..40)
+                    .map(|i| crate::mod_list::NativeSetting {
+                        key: format!("spatial_gui/button/{i}"),
+                        label: format!("Setting {i}"),
+                        tooltip: None,
+                        value: crate::mod_list::NativeSettingValue::Choice {
+                            options: vec![String::new(), String::new()],
+                            index: 0,
+                        },
+                    })
+                    .collect(),
             }),
         });
         let mut ui = OptionsUi::default();
@@ -68,7 +79,7 @@ mod tests {
                 let (widgets, top, bottom, _) = ui.layout(&settings, size.0, size.1);
                 for widget in widgets {
                     if let WKind::Button {
-                        act: Act::NativeButton(_, button),
+                        act: Act::NativeSetting(_, button),
                         ..
                     } = widget.kind
                     {
@@ -96,7 +107,7 @@ mod tests {
                 matches!(
                     w.kind,
                     WKind::Button {
-                        act: Act::NativeButton(0, 0),
+                        act: Act::NativeSetting(0, 0),
                         ..
                     }
                 )
@@ -107,9 +118,12 @@ mod tests {
         ui.selected_key = Some("key.jump");
         assert_eq!(ui.spatial_gui_setting_at(&settings, size, cursor), None);
         ui.selected_key = None;
-        ui.selected_native_key = Some((0, 0));
+        ui.selected_mod_key = Some((0, 0));
         assert_eq!(ui.spatial_gui_setting_at(&settings, size, cursor), None);
-        ui.selected_native_key = None;
+        ui.selected_mod_key = None;
+        ui.selected_page_key = Some((0, 0));
+        assert_eq!(ui.spatial_gui_setting_at(&settings, size, cursor), None);
+        ui.selected_page_key = None;
         ui.scrollbar_drag_y = Some(cursor.1);
         assert_eq!(ui.spatial_gui_setting_at(&settings, size, cursor), None);
         ui.scrollbar_drag_y = None;

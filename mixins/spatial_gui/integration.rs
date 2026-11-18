@@ -1,21 +1,21 @@
 // Complete native lifecycle, configuration, camera and world-screen extraction.
 use super::{
     Game, Screen,
-    perspective::CameraType,
     spatial_config::{Config, Profiles},
     spatial_editor::Editor,
 };
 use glam::{DVec3, Quat, Vec2, Vec3};
 use horizon_client::{
+    camera::CameraType,
     first_person::Hand,
     hud::{
         HudBatch,
         spatial_gui::{self as gpu, Presentation, Surface},
     },
 };
-use std::{cell::RefCell, fs, path::PathBuf, sync::atomic::Ordering, time::Instant};
+use std::{cell::RefCell, fs, path::PathBuf, time::Instant};
 pub(super) const ID: &str = "spatial_gui";
-pub(super) const VERSION: &str = "0.2.3";
+pub(super) const VERSION: &str = "0.2.4";
 pub(super) use super::spatial_motion::Camera;
 #[derive(Clone, Debug)]
 pub(super) struct Identity {
@@ -285,7 +285,7 @@ pub(super) fn identity(game: &Game<'_>) -> Option<Identity> {
             format!("net.minecraft.client.gui.screens.inventory.{class}")
         };
     }
-    let key = if let Some(owner) = game.native_mod_screen() {
+    let key = if let Some(owner) = game.native_mod_screen.as_deref() {
         format!("mod:{owner}")
     } else if menu.is_empty() {
         id.clone()
@@ -356,6 +356,14 @@ pub(super) fn frame(game: &mut Game<'_>) {
     let observed = identity(game);
     let opening = STATE.with(|cell| cell.borrow().identity.is_none()) && observed.is_some();
     let natural = if opening { natural_camera(game) } else { None };
+    // Ask the current FOV hook outside STATE's mutable borrow. The removed
+    // native_camera() snapshot used to supply this value from the last frame.
+    let opening_fov = natural.map_or(game.settings.fov as f32, |camera| {
+        game.fov_degrees(
+            game.clock.camera_fraction() as f32,
+            camera.position.to_array(),
+        )
+    });
     let feet = player_position(game, game.own_player_alpha());
     let native_on = game.native_on(ID);
     let now = Instant::now();
@@ -425,11 +433,9 @@ pub(super) fn frame(game: &mut Game<'_>) {
                     s.anchor_pitch = game.pitch;
                     s.look = Vec2::ZERO;
                     s.saved_camera = Some(game.camera_type);
-                    s.saved_gui = Some(horizon_client::hud::GUI_SCALE.load(Ordering::Relaxed));
+                    s.saved_gui = Some(game.settings.gui_scale);
                 }
-                s.fov = game
-                    .native_camera()
-                    .map_or(game.settings.fov as f32, |c| c.fov_degrees);
+                s.fov = opening_fov;
                 if s.raw.is_none() {
                     s.raw = Some(Vec2::new(game.cursor.0, game.cursor.1));
                 }
@@ -458,7 +464,7 @@ pub(super) fn frame(game: &mut Game<'_>) {
         let c = s.config.clone();
         let original = s.saved_camera.unwrap_or(game.camera_type);
         s.first = if c.auto_detect_camera_mode {
-            original.first_person()
+            original == CameraType::FirstPerson
         } else {
             c.view_mode == "FIRST_PERSON"
         };
@@ -648,9 +654,9 @@ pub(super) fn frame(game: &mut Game<'_>) {
             CameraType::ThirdPersonBack
         };
         if c.override_gui_scale {
-            horizon_client::hud::GUI_SCALE.store(c.gui_scale.clamp(1, 6) as u32, Ordering::Relaxed);
+            gpu::set_gui_scale(Some(c.gui_scale.clamp(1, 6) as u32));
         } else if let Some(original) = s.saved_gui {
-            horizon_client::hud::GUI_SCALE.store(original, Ordering::Relaxed);
+            gpu::set_gui_scale(Some(original));
         }
         let (w, h) = game.gui_size();
         if let (Some(pixels), Some(renderer)) = (s.raw_pixels, &game.renderer) {
@@ -807,8 +813,8 @@ fn reset(game: &mut Game<'_>, s: &mut Session) {
     if let Some(camera) = s.saved_camera.take() {
         game.camera_type = camera;
     }
-    if let Some(scale) = s.saved_gui.take() {
-        horizon_client::hud::GUI_SCALE.store(scale, Ordering::Relaxed);
+    if s.saved_gui.take().is_some() {
+        gpu::set_gui_scale(None);
     }
     if s.surface.take().is_some() {
         if let Some(raw) = s.raw {
@@ -922,16 +928,16 @@ fn collision(game: &Game<'_>, eye: DVec3, target: DVec3) -> (DVec3, bool) {
         for x in lo.x..=hi.x {
             for y in lo.y..=hi.y {
                 for z in lo.z..=hi.z {
-                    let name = game.native_block([x, y, z]);
+                    let name = game.block_name([x, y, z]);
                     if name.ends_with("glass")
                         || name.ends_with("glass_pane")
                         || name.ends_with("_bars")
                         || name.ends_with("copper_grate")
-                        || name == "minecraft:powder_snow"
+                        || &*name == "minecraft:powder_snow"
                     {
                         continue;
                     }
-                    for shape in game.native_block_collision([x, y, z]) {
+                    for shape in game.native_block_collision_in(&game.world, [x, y, z]) {
                         let min = DVec3::new(
                             shape[0] + f64::from(x),
                             shape[1] + f64::from(y),
@@ -977,11 +983,11 @@ pub(super) fn begin_hud(game: &Game<'_>) {
         let Some(renderer) = &game.renderer else {
             return;
         };
-        horizon_client::hud::GUI_SCALE.store(
-            s.saved_gui.unwrap_or(game.settings.gui_scale),
-            Ordering::Relaxed,
+        gpu::set_gui_scale(Some(s.saved_gui.unwrap_or(game.settings.gui_scale)));
+        let hud = HudBatch::new(
+            [renderer.config.width, renderer.config.height],
+            game.settings.gui_scale_inputs(),
         );
-        let hud = HudBatch::new([renderer.config.width, renderer.config.height]);
         s.hud_scale = hud.scale;
         s.hud_gui = [hud.width, hud.height];
     });
@@ -1003,8 +1009,11 @@ pub(super) fn begin_screen(game: &Game<'_>, batch: &mut HudBatch, id: &str) {
         } else {
             s.saved_gui.unwrap_or(game.settings.gui_scale)
         };
-        horizon_client::hud::GUI_SCALE.store(requested, Ordering::Relaxed);
-        let screen = HudBatch::new([renderer.config.width, renderer.config.height]);
+        gpu::set_gui_scale(Some(requested));
+        let screen = HudBatch::new(
+            [renderer.config.width, renderer.config.height],
+            game.settings.gui_scale_inputs(),
+        );
         let ratio = batch.scale / screen.scale;
         for v in &mut batch.vertices {
             v.pos[0] *= ratio;
@@ -1207,7 +1216,7 @@ pub(super) fn capture(game: &Game<'_>, batch: &mut HudBatch) {
         } else {
             s.saved_gui.unwrap_or(game.settings.gui_scale)
         };
-        horizon_client::hud::GUI_SCALE.store(requested, Ordering::Relaxed);
+        gpu::set_gui_scale(Some(requested));
     });
 }
 pub(super) fn fov(_game: &Game<'_>, degrees: &mut f32) {
@@ -1230,18 +1239,13 @@ pub(super) fn fov(_game: &Game<'_>, degrees: &mut f32) {
 pub(super) fn suppress_blur() -> bool {
     STATE.with(|s| s.borrow().surface.is_some())
 }
-pub(super) fn hide_hand(
-    _game: &Game<'_>,
-    stack: Option<&horizon_client::items::ItemStack>,
-    canceled: &mut bool,
-) {
+pub(super) fn hide_hand(_game: &Game<'_>, is_shield: bool, canceled: &mut bool) {
     STATE.with(|s| {
         let s = s.borrow();
         if s.surface.is_some()
             && s.first
             && (s.config.hide_hands_in_first_person
-                || (s.config.hide_shield_in_first_person
-                    && stack.is_some_and(|stack| &*stack.item == "minecraft:shield")))
+                || (s.config.hide_shield_in_first_person && is_shield))
         {
             *canceled = true;
         }

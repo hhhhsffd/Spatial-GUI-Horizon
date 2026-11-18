@@ -5,6 +5,7 @@ import filecmp
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -41,6 +42,54 @@ def sync_stage(fresh, stage):
             else:
                 path.unlink()
     shutil.rmtree(fresh)
+
+
+
+def prepare_source(source, target, cargo, env):
+    """Give the legacy mixin tool a disposable, ordinary-module source view.
+
+    Horizon's launcher materializes OUT_DIR module lists too. Its current
+    November 18 source also has moved creature modules whose parent paths the
+    pinned mixin tool rejects. Inlining those modules is a developer-build
+    workaround; it does not make unmodified launchers accept the bundle.
+    """
+    game = source / "crates/horizon-client/src/game.rs"
+    if '"/game_modules.rs"' not in game.read_text(encoding="utf-8"):
+        return source
+    prepared = target / f"horizon-input-{COMPAT['horizon_revision'][:7]}"
+    for path in source.rglob("*"):
+        if path.is_symlink() and not path.resolve().is_relative_to(source):
+            raise SystemExit(f"Source link leaves its checkout: {path}")
+    shutil.copytree(source, prepared, dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns(".git", "target", ".local", "node_modules"))
+    helper = target / "source-prep"
+    (helper / "src").mkdir(parents=True, exist_ok=True)
+    dependency = (source / "crates/horizon-mod-api-gen").as_posix()
+    manifest = ('[package]\nname="spatial-source-prep"\nversion="0.0.0"\nedition="2024"\n'
+                '[workspace]\n[dependencies]\nhorizon-mod-api-gen = { path = '
+                + json.dumps(dependency) + ' }\n')
+    (helper / "Cargo.toml").write_text(manifest, encoding="utf-8")
+    shutil.copy2(ROOT / "tools/prepare_source.rs", helper / "src/main.rs")
+    run([cargo, "build", "--release", "--manifest-path", helper / "Cargo.toml"], env=env)
+    binary = Path(env["CARGO_TARGET_DIR"]) / "release" / ("spatial-source-prep.exe" if os.name == "nt" else "spatial-source-prep")
+    subprocess.run([str(binary), str(prepared)], check=True, env=env, stdout=subprocess.DEVNULL)
+    # This one area was physically moved while its logical Rust module names
+    # stayed the same. Its externally declared files contain no further
+    # external module declarations, so this preserves their module scopes.
+    creatures = prepared / "crates/horizon-client/src/game/mobs/creatures/mod.rs"
+    if creatures.is_file():
+        pattern = r'#\[path\s*=\s*"([^"\n]+)"\]\s*((?:pub(?:\([^)]*\))?\s+)?mod\s+(\w+)\s*);'
+        def inline(match):
+            path = (creatures.parent / match[1]).resolve()
+            if not path.is_relative_to(prepared.resolve()):
+                raise SystemExit(f"Module leaves prepared source: {path}")
+            body = path.read_text(encoding="utf-8")
+            if re.search(r'^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+\w+\s*;', body, re.MULTILINE):
+                raise SystemExit(f"Moved module needs recursive source preparation: {path}")
+            body = re.sub(r'^//!([^\n]*)', r'//\1', body, flags=re.MULTILINE)
+            return match[2] + " {\n" + body + "\n}"
+        creatures.write_text(re.sub(pattern, inline, creatures.read_text(encoding="utf-8")), encoding="utf-8")
+    return prepared
 
 
 def package():
@@ -119,6 +168,8 @@ def main():
         mixins = Path(found)
     target = ROOT / "target"
     target.mkdir(exist_ok=True)
+    env["CARGO_TARGET_DIR"] = str((args.target_dir or target / "horizon-cargo").resolve())
+    source = prepare_source(source, target, cargo, env)
     if args.action == "plan":
         run([mixins, "plan", "--workspace", source, "--mods", ROOT / "mixins", "--out", target / "plan.json"], env=env)
         return
@@ -126,7 +177,6 @@ def main():
     fresh = target / f"horizon-stage-new-{uuid.uuid4().hex}"
     run([mixins, "apply", "--workspace", source, "--mods", ROOT / "mixins", "--out", fresh], env=env)
     sync_stage(fresh, stage)
-    env["CARGO_TARGET_DIR"] = str((args.target_dir or target / "horizon-cargo").resolve())
     run([cargo, args.action, "--locked", "--profile", args.profile,
          "-p", "horizon-official", "--bin", "horizon-official"], cwd=stage, env=env)
 

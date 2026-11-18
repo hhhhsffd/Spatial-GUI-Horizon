@@ -2,13 +2,21 @@
 
 Native Rust port of [tastytrash/Spatial-GUI](https://github.com/tastytrash/Spatial-GUI), distributed as a **`.hnmod`** source bundle. Horizon compiles the Rust into its client. Java, Fabric, a JVM, and Python are not required to run the mod.
 
-Targets Horizon **`nightly-2026-11-13-9f42064`** (the latest published game nightly checked on 2026-11-14), Minecraft data version **26.3**. Private renderer and input integrations require Horizon revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` and horizon-mixins revision `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
+Stable release **0.2.3** targets Horizon **`nightly-2026-11-13-9f42064`** (the latest published game nightly checked on 2026-11-14), Minecraft data version **26.3**. Private renderer and input integrations require Horizon revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` and horizon-mixins revision `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
+
+## Latest Horizon preview (0.2.4)
+
+The [0.2.4 candidate bundle](dist/spatial_gui-0.2.4.hnmod) targets **`nightly-2026-11-18-0b14f8a`**, full revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`, and mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. It adapts the new typed mod settings, hand rendering, render slots, and explicit GUI scale inputs. Left-click/scroll up still moves forward; right-click/scroll down moves backward.
+
+**Launcher staging is blocked on this nightly.** The pinned mixin tool rejects Horizon's own `../../creatures/biome_facts.rs` module path with `E_INVALID_PATH`. Importing this preview through an unmodified launcher is not a supported installation path yet. Keep the stable 0.2.3 package for its older pinned nightly.
+
+The developer helper prepares a disposable source copy using Horizon's module discovery and inlines its moved creature modules before applying mixins. This allows compiler checks/source builds; it does not patch or update your launcher or its downloaded source cache. To check or build the preview, pass the November 18 source and the pinned mixin executable to `tools/port.py` as described below. No game was launched for 0.2.4.
 
 ## Install
 
 Download [Spatial GUI 0.2.3](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.3), or use [dist/spatial_gui-0.2.3.hnmod](dist/spatial_gui-0.2.3.hnmod). Import it through a Horizon launcher with native mod support. It contains source, a manifest, and the upstream MIT license; the launcher builds the native client.
 
-Alternatively, build directly from this folder:
+For the stable 0.2.3 checkout, build directly from its folder:
 
 ```powershell
 horizon-launcher native-build ./mixins/spatial_gui --instance "YOUR INSTANCE" --version nightly-2026-11-13-9f42064 --trust-native-code
@@ -29,7 +37,7 @@ Inventory, creative, and container menus are enabled by default. Pause presentat
 
 ## Controls
 
-Open **Options > Mods > Spatial GUI** for categorized settings and key rebinding.
+Open **Options > Mods > Spatial GUI** for categorized settings. In the 0.2.4 preview, rebind its keys under **Options > Controls > Key Binds**, in the Spatial GUI category.
 
 Hover a setting or the category selector to adjust it:
 
@@ -87,7 +95,7 @@ python tools/port.py build
 python tools/port.py package
 ```
 
-The helper discovers Horizon's installed source and mixin tool on Windows. Override them with `--horizon-source PATH` and `--mixins PATH`; use `--target-dir PATH` for a shared Cargo cache. All transformations happen in `target/`, preserving the downloaded Horizon source. `tools/wire.py` regenerates the declarative manifest and typed adapters when hook definitions change. Packaging creates a deterministic ZIP and SHA-256 sidecar.
+The helper discovers Horizon's installed source and mixin tool on Windows. On current revisions it first materializes generated module declarations in a disposable copy, with the developer staging workaround described above. Override them with `--horizon-source PATH` and `--mixins PATH`; use `--target-dir PATH` for a shared Cargo cache. All transformations happen in `target/`, preserving the downloaded Horizon source. `tools/wire.py` regenerates the declarative manifest and typed adapters when hook definitions change. Packaging creates a deterministic ZIP and SHA-256 sidecar.
 
 See [PORTING_STATUS.md](PORTING_STATUS.md) for implementation coverage and [VALIDATION.md](VALIDATION.md) for checks actually performed.
 

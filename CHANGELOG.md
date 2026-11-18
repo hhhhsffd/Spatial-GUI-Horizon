@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.4 (preview)
+
+- Target Horizon `nightly-2026-11-18-0b14f8a`, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`.
+- Adapt mod settings and key bindings to Horizon's typed native settings pages while retaining forward clicks, reverse clicks, wheel controls, categories, and editor/profile actions.
+- Move frame, key-release, hand, FOV, GUI-layer and renderer integration to the current hook modules and render slots.
+- Replace removed global GUI scale state with a scoped override of explicit batch scale inputs; retain Unicode scaling and independent offscreen batches.
+- Materialize generated game modules in the developer build helper. Include a disposable-source workaround for the pinned tool's refusal of Horizon's moved creature module paths. Standard launcher staging remains blocked; this preview is not an installation-ready stable release.
+
 ## 0.2.3
 
 - Fixed avatar wobble when opening menus while running or falling: camera and panel now follow the same interpolated player position as the rendered model.

@@ -1,3 +1,3 @@
-fn spatial_render_needs(needs: &mut crate::gfx::native_render::RenderNeeds) {
-    crate::hud::spatial_gui::needs(needs);
+fn spatial_render_needs(needs: RenderNeeds) -> RenderNeeds {
+    let mut needs = needs; crate::hud::spatial_gui::needs(&mut needs); needs
 }

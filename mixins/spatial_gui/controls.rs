@@ -465,7 +465,7 @@ pub(super) fn input(game: &mut Game<'_>, event: &mut WindowEvent) -> bool {
     let Some(size) = size else {
         return false;
     };
-    let batch = HudBatch::new(size);
+    let batch = HudBatch::new(size, game.settings.gui_scale_inputs());
     match event {
         WindowEvent::CursorMoved { position, .. } => {
             let raw = Vec2::new(
@@ -648,7 +648,7 @@ pub(super) fn relative(game: &Game<'_>, event: &DeviceEvent) {
 /// All other areas retain Horizon's normal list scrolling and key rebinding.
 fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
     use horizon_client::options_ui::Page;
-    let Page::NativeMod(index) = game.ui.options.page() else {
+    let Page::NativeMod(_) = game.ui.options.page() else {
         STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
         return false;
     };
@@ -697,7 +697,9 @@ fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
     });
     if !adjustable {
         STATE.with(|cell| cell.borrow_mut().settings_wheel = None);
-        return false;
+        // Actions and list editors have no previous value. Let the wheel
+        // scroll the list, but consume right-click rather than activating them.
+        return wheel.is_none();
     }
     let steps = STATE.with(|cell| {
         let mut s = cell.borrow_mut();
@@ -723,7 +725,8 @@ fn settings_input(game: &mut Game<'_>, event: &WindowEvent) -> bool {
         for _ in 0..steps.unsigned_abs() {
             settings_step(game, button, f64::from(steps.signum()));
         }
-        game.native_settings_refresh(index);
+        runtime::load(game);
+        super::spatial_compat::refresh(game);
     }
     true
 }
@@ -1039,11 +1042,11 @@ pub(super) fn screen_key(game: &Game<'_>, name: &str, repeat: bool, canceled: &m
         }
     });
 }
-pub(super) fn released(game: &Game<'_>, key: winit::keyboard::KeyCode, pressed: bool) {
+pub(super) fn released(game: &Game<'_>, key: &str, pressed: bool) {
     if pressed || !game.native_on(ID) {
         return;
     }
-    if horizon_client::keybinds::key_name(key) == Some("key.keyboard.space") {
+    if key == "key.keyboard.space" {
         STATE.with(|cell| {
             let mut s = cell.borrow_mut();
             if s.editor.active {

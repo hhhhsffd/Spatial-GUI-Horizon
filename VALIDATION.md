@@ -1,4 +1,23 @@
-# Validation of Spatial GUI 0.2.3
+# Validation of Spatial GUI 0.2.4 preview
+
+Target checked on 2026-11-18: **`nightly-2026-11-18-0b14f8a`**, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`; mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. The nightly SDK independently confirms the game commit, Minecraft 26.3, and Rust 1.99.1. The published source archive was checked against its SHA-256 (`1219e1196fefb481a8d459d03c86678d14623b73b3764aa59cd15dbcb010219f`).
+
+- All **17 core tests passed**.
+- All **three focused renderer tests passed**: scrolled/clipped settings hit targets, key-binding/other-page/scrollbar guards, and GUI scale override/reset with Unicode and independent offscreen batches.
+- Native mixin staging succeeds after the developer source preparation described below: **52 injections and 11 support modules**.
+- `python tools/port.py check --horizon-source <November-18-source> --mixins <pinned-tool> --target-dir <shared-cache>`: **passed** for the complete `horizon-official` executable target, using the prepared source copy.
+- The candidate bundle passed the `cargo horizon-mod check` native archive check, ZIP integrity, metadata/pin checks, and byte-for-byte comparison of all packaged Rust/manifest files. It contains **66 entries**, is **66,748 bytes**, and has SHA-256 `9979bd7a317d24156f69eaf2e192bb0c7145b3f2560dd2f0055f64d4b309d047`.
+- **No game was launched or tested for 0.2.4.**
+
+## Launcher staging blocker
+
+Horizon now generates its game/native module lists through OUT_DIR includes. The launcher materializes those before calling its pinned mixin tool. On the November 18 source, that tool then refuses the game's own `../../creatures/biome_facts.rs` path with `E_INVALID_PATH: expected a nonempty relative path without '.' or '..'`. This occurs before the mod's injections can be applied.
+
+The developer helper now calls Horizon's own `materialize_game_modules` on a disposable source copy, then inlines the moved creature area modules without changing their logical Rust scopes. It rejects source links outside the checkout and refuses to inline a moved module containing further external module declarations. The downloaded source archive/cache and launcher are left unchanged. Successful checks using this developer preparation do **not** establish successful import/build through an unmodified launcher. The preview remains separate from the stable 0.2.3 release.
+
+---
+
+## Historical validation of Spatial GUI 0.2.3
 
 Checked on 2026-11-14 against **Horizon `nightly-2026-11-13-9f42064`**, revision `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0` (latest published game nightly at the time), and horizon-mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`.
 
