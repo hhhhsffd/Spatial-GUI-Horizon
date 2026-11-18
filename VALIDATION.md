@@ -3,7 +3,7 @@
 Target checked on 2026-11-18: **`nightly-2026-11-18-0b14f8a`**, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`; mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. The nightly SDK independently confirms the game commit, Minecraft 26.3, and Rust 1.99.1. The published source archive was checked against its SHA-256 (`1219e1196fefb481a8d459d03c86678d14623b73b3764aa59cd15dbcb010219f`).
 
 - All **17 core tests passed**.
-- All **three focused renderer tests passed**: scrolled/clipped settings hit targets, key-binding/other-page/scrollbar guards, and GUI scale override/reset with Unicode and independent offscreen batches.
+- All **four focused renderer tests passed** on the final staged source: scrolled/clipped settings hit targets, key-binding/other-page/scrollbar guards, GUI scale override/reset with Unicode and independent offscreen batches, and the GPU avatar/first-person-hand overlap-opacity test (including terrain occlusion and SDR/HDR coverage).
 - Native mixin staging succeeds after the developer source preparation described below: **52 injections and 11 support modules**.
 - `python tools/port.py check --horizon-source <November-18-source> --mixins <pinned-tool> --target-dir <shared-cache>`: **passed** for the complete `horizon-official` executable target, using the prepared source copy.
 - The optimized `horizon-official` game build **passed**, including a fresh rebuild after adapting editor/profile text to the new explicit-ARGB native text helper.
