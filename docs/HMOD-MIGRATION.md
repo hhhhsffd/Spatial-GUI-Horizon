@@ -1,6 +1,6 @@
 # Unified `.hmod` migration (0.2.5)
 
-This project follows the November 18 [Horizon mod format](https://github.com/horizon-rust/horizon/blob/0b14f8acfd97fa2c750e42795249dcc981178ca4/docs/modding/src/reference/manifest.md).
+This project follows the November 20 [Horizon mod format](https://github.com/horizon-rust/horizon/blob/0a875da91dbb0fdcb7ba8c42c11341aa229af51a/docs/modding/src/reference/manifest.md).
 
 - `horizon-mod.toml` is the sole mod manifest and owns identity, metadata and the native pins.
 - `[[native.module]]` and `[[native.mixin]]` replace the old tool declarations.
@@ -20,9 +20,9 @@ Horizon's new native route compiles a function-replacement library against a pre
 | `geometry` | `crates/horizon-client-render/src/hud.rs` | Shared panel geometry |
 | `compositor` | `crates/horizon-client-render/src/hud.rs` | Native GUI textures, world depth, player masks and GPU pipelines |
 
-The documented refusal for unsupported destinations is `E_MIXIN_MODULE_DESTINATION`. A direct probe using this build's generator and its source-derived function index instead reaches an invalid mirror and fails with `E_MIXIN_SOURCE: ... no module horizon_client::hud`. Both reflect the unsupported renderer destination. Renderer function targets may also lack replacement slots. Moving declarations into the game crate does not move the private renderer types or install the missing renderer changes. The factory alone supplies no spatial rendering.
+The documented refusal for unsupported destinations is `E_MIXIN_MODULE_DESTINATION`. A probe on November 18 reached an invalid mirror and failed with `E_MIXIN_SOURCE: ... no module horizon_client::hud`. The November 20 generator still inserts support modules into the `horizon_client` mirror. Renderer function targets may also lack replacement slots. Moving declarations into the game crate does not move the private renderer types or install the missing renderer changes. The factory alone supplies no spatial rendering.
 
-The restriction is explicit in [Support modules](https://github.com/horizon-rust/horizon/blob/0b14f8acfd97fa2c750e42795249dcc981178ca4/docs/modding/src/concepts/native-route/5-support-modules.md) and implemented in `horizon-mod-api-gen/src/patch.rs::support_module` in that build. A compatible official launcher build needs renderer support-module destinations and suitable renderer replacement targets or an equivalent GPU integration API. They are not provided by this mod release.
+The restriction is explicit in [Support modules](https://github.com/horizon-rust/horizon/blob/0a875da91dbb0fdcb7ba8c42c11341aa229af51a/docs/modding/src/concepts/native-route/5-support-modules.md) and implemented in `horizon-mod-api-gen/src/patch.rs::support_module` in that build. A compatible official launcher build needs renderer support-module destinations and suitable renderer replacement targets or an equivalent GPU integration API. They are not provided by this mod release.
 
 ## Working build paths
 

@@ -5,13 +5,13 @@ It includes the exact transformed Horizon source (`horizon/`) and locked depende
 (`vendor/`), including licenses. Horizon is LGPL-3.0-or-later; Spatial GUI's original code is MIT.
 The normal `.hmod` remains source-only and does not contain Horizon.
 
-Base: Horizon `0b14f8acfd97fa2c750e42795249dcc981178ca4`, Mixins
+Base: Horizon `0a875da91dbb0fdcb7ba8c42c11341aa229af51a`, Mixins
 `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`, Minecraft data version 26.3.
 Source preparation materialized generated module lists and inlined moved creature modules.
 The mod's 52 injections and 11 support modules are already applied; no mixin tool is needed
 to rebuild this archive. Original source and transformation tools are also available at:
 
-- https://github.com/horizon-rust/horizon/tree/0b14f8acfd97fa2c750e42795249dcc981178ca4
+- https://github.com/horizon-rust/horizon/tree/0a875da91dbb0fdcb7ba8c42c11341aa229af51a
 - https://github.com/hhhhsffd/Spatial-GUI-Horizon/tree/v0.2.5
 
 ## Windows GNU rebuild

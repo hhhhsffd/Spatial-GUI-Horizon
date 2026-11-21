@@ -1027,11 +1027,32 @@ pub(super) fn begin_screen(game: &Game<'_>, batch: &mut HudBatch, id: &str) {
         s.in_screen = true;
     });
 }
+fn clear_screen_background(batch: &mut HudBatch, range: std::ops::Range<usize>) {
+    let (width, height) = (batch.width, batch.height);
+    for vertices in batch.vertices[range].chunks_exact_mut(6) {
+        let fullscreen = vertices.iter().all(|v| {
+            (v.pos[0].abs() < 0.1 || (v.pos[0] - width).abs() < 0.1)
+                && (v.pos[1].abs() < 0.1 || (v.pos[1] - height).abs() < 0.1)
+        });
+        if fullscreen {
+            for v in vertices {
+                v.color = 0;
+            }
+        }
+    }
+}
+
 pub(super) fn screen_drawn(batch: &mut HudBatch) {
     STATE.with(|cell| {
         let mut s = cell.borrow_mut();
         if !s.in_screen {
             return;
+        }
+        if let Some(start) = s.capture_start {
+            // GUI dimensions round up independently at each scale. Match the
+            // background to the viewport that drew it, before restoring HUD units.
+            let end = batch.vertices.len();
+            clear_screen_background(batch, (start as usize).min(end)..end);
         }
         let ratio = batch.scale / s.hud_scale;
         for v in &mut batch.vertices {
@@ -1063,16 +1084,9 @@ pub(super) fn capture(game: &Game<'_>, batch: &mut HudBatch) {
             .unwrap_or(batch.vertices.len() as u32)
             .min(batch.vertices.len() as u32);
         if !closing {
-            for vertices in batch.vertices[start as usize..end as usize].chunks_exact_mut(6) {
-                let fullscreen = vertices.iter().all(|v| {
-                    (v.pos[0].abs() < 0.1 || (v.pos[0] - batch.width).abs() < 0.1)
-                        && (v.pos[1].abs() < 0.1 || (v.pos[1] - batch.height).abs() < 0.1)
-                });
-                if fullscreen {
-                    for v in vertices {
-                        v.color = 0;
-                    }
-                }
+            // Screens without a begin hook were drawn in the HUD viewport.
+            if s.capture_start.is_none() {
+                clear_screen_background(batch, start as usize..end as usize);
             }
             if c.hide_hud || c.hide_hotbar {
                 for vertex in &mut batch.vertices[..start as usize] {

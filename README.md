@@ -2,11 +2,11 @@
 
 Native Rust port of [tastytrash/Spatial-GUI](https://github.com/tastytrash/Spatial-GUI), distributed in Horizon's new **`.hmod`** source format and as a **precompiled Windows x64 game**. Java, a JVM, and Python are not required to play.
 
-Release **0.2.5** targets Horizon **`nightly-2026-11-18-0b14f8a`**, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`, Minecraft **26.3**. It preserves the 0.2.4 feature set while migrating the project and archive to the [unified mod format](https://github.com/horizon-rust/horizon/blob/main/docs/modding/src/introduction.md).
+Release **0.2.5** targets Horizon **`nightly-2026-11-20-0a875da`**, revision `0a875da91dbb0fdcb7ba8c42c11341aa229af51a`, Minecraft **26.3**. It preserves the 0.2.4 feature set while migrating the project and archive to the [unified mod format](https://github.com/horizon-rust/horizon/blob/main/docs/modding/src/introduction.md).
 
 ## Install 0.2.5 on Windows x64
 
-Download **`spatial_gui-0.2.5-windows-x64.zip`** from [the release](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.5), extract it, and use **Versions > Import Build** to import `horizon-client.exe` on `nightly-2026-11-18-0b14f8a`. Prepare that nightly's resources through the launcher first. See [installation instructions](docs/INSTALL-PREBUILT.md).
+Download **`spatial_gui-0.2.5-windows-x64.zip`** from [the release](https://github.com/hhhhsffd/Spatial-GUI-Horizon/releases/tag/v0.2.5), extract it, and use **Versions > Import Build** to import `horizon-client.exe` on `nightly-2026-11-20-0a875da`. Prepare that nightly's resources through the launcher first. See [installation instructions](docs/INSTALL-PREBUILT.md).
 
 **The `.hmod` passes Horizon's package validator, but the new launcher's native Build cannot build this mod on the pinned nightly.** Its function-replacement route restricts support modules to `horizon_client`; Spatial GUI needs the renderer's private GPU pipelines in `horizon_client_render`. The Windows import build and full-source developer build retain those integrations. This release does not claim launcher-native compatibility. See [the migration and exact blocker](docs/HMOD-MIGRATION.md).
 
@@ -93,7 +93,7 @@ The package command produces a deterministic `.hmod` and SHA-256 sidecar. `cargo
 To compile the complete mod, use the full-source developer build:
 
 ```powershell
-python tools/port.py build --horizon-source PATH_TO_NOVEMBER_18_SOURCE --mixins PATH_TO_PINNED_MIXIN_TOOL --target-dir target/horizon-cargo
+python tools/port.py build --horizon-source PATH_TO_NOVEMBER_20_SOURCE --mixins PATH_TO_PINNED_MIXIN_TOOL --target-dir target/horizon-cargo
 ```
 
 The helper reads the unified manifest, derives a legacy source-transform manifest **only under `target/`**, materializes Horizon's generated modules in a disposable copy, and handles its moved creature paths. It then applies all 52 injections and 11 support modules and compiles `horizon-official`. The downloaded Horizon tree is preserved. This is a full game compilation, separate from the new launcher's function-replacement route.

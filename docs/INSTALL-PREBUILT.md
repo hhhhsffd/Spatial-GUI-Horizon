@@ -4,14 +4,14 @@ This is an **unsigned, independently modified Horizon game**, not an official Ho
 Spatial GUI's native code is already compiled in. It runs with your account's permissions; use it
 only if you trust the source and publisher. Windows x64 only. No Java or Python is needed to play.
 
-1. Install Horizon `nightly-2026-11-18-0b14f8a` and prepare its resources from your own Minecraft
+1. Install Horizon `nightly-2026-11-20-0a875da` and prepare its resources from your own Minecraft
    installation through the Horizon launcher.
 2. Extract this ZIP. In the launcher's Versions page, use **Import Build** and pick
    `horizon-client.exe`, using that nightly as its base. Or run in PowerShell:
 
    ```powershell
-   & "D:\horizon\horizon-launcher.exe" install nightly-2026-11-18-0b14f8a
-   & "D:\horizon\horizon-launcher.exe" import-build ".\horizon-client.exe" --version nightly-2026-11-18-0b14f8a --trust-unsigned
+   & "D:\horizon\horizon-launcher.exe" install nightly-2026-11-20-0a875da
+   & "D:\horizon\horizon-launcher.exe" import-build ".\horizon-client.exe" --version nightly-2026-11-20-0a875da --trust-unsigned
    ```
 
    Adjust the launcher path if yours is elsewhere. The import selects the new build. If your

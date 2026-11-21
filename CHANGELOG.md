@@ -4,7 +4,8 @@
 
 - Migrate to the flat `.hmod` format: one `horizon-mod.toml`, root Cargo crate and native hook factory, `src/` payloads, native mixin/module declarations, license and notices.
 - Remove the legacy package wrapper and `horizon-native.json`; generate the older source-transform manifest only in disposable developer staging.
-- Preserve all existing renderer/input/editor/profile behavior and the November 18 game/tool pins.
+- Fix the gray panel around the inventory when a GUI scale override changes the viewport dimensions.
+- Target Horizon `nightly-2026-11-20-0a875da`, revision `0a875da91dbb0fdcb7ba8c42c11341aa229af51a`, with the same horizon-mixins pin.
 - Document the new launcher's renderer-module restriction: package validation passes, but native Build remains unsupported on this pin. Retain the Windows Import Build and complete-source rebuild paths.
 
 ## 0.2.4

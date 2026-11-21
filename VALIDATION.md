@@ -1,6 +1,6 @@
 # Validation of Spatial GUI 0.2.5
 
-Target: Horizon `nightly-2026-11-18-0b14f8a`, revision `0b14f8acfd97fa2c750e42795249dcc981178ca4`, Minecraft 26.3 and Rust 1.99.1; horizon-mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. This release migrates packaging and source paths while preserving the 0.2.4 implementation.
+Target: Horizon `nightly-2026-11-20-0a875da`, revision `0a875da91dbb0fdcb7ba8c42c11341aa229af51a`, Minecraft 26.3 and Rust 1.99.1; horizon-mixins `e59da9094f0c2fdda6c627fe9eff22dec6a906f0`. This release migrates packaging, updates the game pin, and fixes an inventory capture issue with GUI scale overrides.
 
 - All **17 core tests passed**, including configuration/profile compatibility, settings controls, geometry, moving-player camera alignment and editor history. The native hook factory compiled against the pinned downloaded SDK.
 - Root crate **Clippy passed with warnings denied** (`cargo clippy --offline --locked --all-targets -- -D warnings`) against Rust 1.99.1 and the pinned SDK.
@@ -9,15 +9,27 @@ Target: Horizon `nightly-2026-11-18-0b14f8a`, revision `0b14f8acfd97fa2c750e4279
 - Extracting the `.hmod` to an isolated project, fetching the pinned SDK and running the official **`cargo horizon-mod build` passed**. Its repacked `.hmod` also passed the official checker. The development checkout contains Rust tests/tools and unrelated local projects outside `src/`, which the official folder packer refuses; `tools/port.py package` selects only the supported package paths.
 - The unified manifest retains **52 mixins and 11 support modules**. All payloads reside under `src/`, with root Cargo files, hook factory, README, MIT license and notices. There is no legacy manifest or metadata wrapper in the archive.
 
+## Baseline runtime on November 18
+
+The earlier migration build, before the GUI scale fix and November 20 repin, ran offscreen at 1280x720 on an NVIDIA RTX 2080 (Vulkan), in a fresh isolated world/game/home/launcher setup, without `native-mods.json` beside it.
+
+- Opened the creative inventory and Spatial GUI's native categorized settings.
+- Opened/closed the visual editor; its label check measured **2,094 bright header pixels** (requires more than 50). Captures show the world-space menu, avatar and readable editor controls.
+- Opened the menu while sprinting, with confirmed horizontal velocity **0.148 blocks/tick**.
+- Reloaded configuration, rendered a first-person **-60 degree curved panel** at GUI scale 2 with a held diamond sword, and opened/closed the curved editor.
+- Returned to gameplay and quit cleanly. No panic or GPU validation error was found in the isolated logs. Six screenshots were captured; runtime evidence is in `target/runtime-0.2.5-5a6a92f2`.
+
+A targeted follow-up on the same build reproduced a gray panel with the GUI scale override on. Turning off drop shadows left it visible. Turning off the override removed it. The fix filters the background in its own viewport before converting to HUD coordinates. It does not establish a successful new-route native launcher build, compatibility with every other mod/controller/shader pack, or other platforms.
+
 ## New native route remains blocked
 
-Package validation is not a successful native launcher build. The new route's documented support-module contract accepts game-crate destinations. Three Spatial GUI support modules need `horizon_client_render`. A direct probe of the pinned `horizon-mod-api-gen::patch::generate`, with the mod's real support modules, a real frame target and a function index generated from the pinned source, fails with:
+Package validation is not a successful native launcher build. The new route's documented support-module contract accepts game-crate destinations. Three Spatial GUI support modules need `horizon_client_render`. A direct probe of the November 18 `horizon-mod-api-gen::patch::generate`, with the mod's real support modules, a real frame target and a function index generated from the pinned source, fails with:
 
 ```text
 E_MIXIN_SOURCE: horizon_client::game::native_hooks::render_frame_pre::Game<'_>::native_render_frame_pre: no module horizon_client::hud
 ```
 
-The support-module contract documents `E_MIXIN_MODULE_DESTINATION` for destinations outside the game crate; this SDK instead gets as far as constructing an invalid mirror. No successful function-replacement build is claimed. The factory alone does not render Spatial GUI. See [migration details](docs/HMOD-MIGRATION.md).
+The support-module contract documents `E_MIXIN_MODULE_DESTINATION` for destinations outside the game crate; that SDK instead reached an invalid mirror. The November 20 generator still places all support modules in the game-crate mirror. No successful function-replacement build is claimed. The factory alone does not render Spatial GUI. See [migration details](docs/HMOD-MIGRATION.md).
 
 ## Historical validation of Spatial GUI 0.2.4
 
