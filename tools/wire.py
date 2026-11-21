@@ -1,25 +1,39 @@
 """Generate the declarative integration manifest and its small typed adapters."""
 from pathlib import Path
 import json
+import tomllib
 
-BUNDLE = Path(__file__).resolve().parents[1] / "mixins/spatial_gui"
-ROOT = BUNDLE.parents[1]
-COMPAT = json.loads((ROOT / "compatibility.json").read_text())
-parts = [f'''[mod]
-id = "spatial_gui"
-version = "0.2.4"
-priority = 100
+ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "src/native"
+VERSION = tomllib.loads((ROOT / "horizon-mod.toml").read_text())["version"]
+NATIVE = tomllib.loads((ROOT / "horizon-mod.toml").read_text())["native"]
+COMPAT = dict(game=NATIVE["game"], horizon_revision=NATIVE["horizon"],
+              horizon_mixins_revision=NATIVE["mixins"])
+parts = [f'''id = "spatial_gui"
+name = "Spatial GUI"
+version = "{VERSION}"
+description = "World-space menus, inverse pointer mapping, profiles and visual editor"
+authors = ["Spatial GUI Horizon contributors", "tastytrash (original mod)"]
+license = "MIT"
+homepage = "https://github.com/hhhhsffd/Spatial-GUI-Horizon"
+issues = "https://github.com/hhhhsffd/Spatial-GUI-Horizon/issues"
+api = "0.2"
+side = "client"
+capabilities = ["registries"]
 
-[compatibility]
-horizon_revision = "{COMPAT['horizon_revision']}"
+[native]
+game = "{COMPAT['game']}"
+horizon = "{COMPAT['horizon_revision']}"
+mixins = "{COMPAT['horizon_mixins_revision']}"
 ''']
 
+
 def module(id, file, name, source, public=False):
-    parts.append(f'\n[[module]]\nid = "{id}"\nfile = "{file}"\nname = "{name}"\nsource = "{source}"\n' + ('visibility = "pub"\n' if public else ''))
+    parts.append(f'\n[[native.module]]\nid = "{id}"\nfile = "{file}"\nname = "{name}"\nsource = "src/native/{source}"\n' + ('visibility = "pub"\n' if public else ''))
 
 def hook(id, target, args, body, result=None, cancel=False, kind="HEAD"):
     q = json.dumps
-    parts.append(f'\n[[injection]]\nid = "{id}"\nkind = "{kind}"\ntarget = "{target}"\nhelper = "{id}.rs"\n' + ('cancellable = true\n' if cancel else '') + 'bindings = [\n' + ''.join(f'  {{ name = {q(n)}, ty = {q(t)}, value = {q(v)} }},\n' for n,t,v in args) + ']\n')
+    parts.append(f'\n[[native.mixin]]\nid = "{id}"\nkind = "{kind}"\ntarget = "{target}"\nhelper = "src/native/{id}.rs"\n' + ('cancellable = true\n' if cancel else '') + 'bindings = [\n' + ''.join(f'  {{ name = {q(n)}, ty = {q(t)}, value = {q(v)} }},\n' for n,t,v in args) + ']\n')
     output = f" -> {result}" if result else ""
     (BUNDLE / f"{id}.rs").write_text(f'fn spatial_{id}(' + ', '.join(f'{n}: {t}' for n,t,_ in args) + f'){output} {{\n    {body}\n}}\n')
 
@@ -86,4 +100,4 @@ hook('hand_drawn','horizon_client_render::render_slots::hand_drawn',[('hand',"&m
 hook('render_hooked','horizon_client_render::render_slots::world_drawn_hooked',[],f'if {R}::active() {{ core::ops::ControlFlow::Break(true) }} else {{ core::ops::ControlFlow::Continue(()) }}','core::ops::ControlFlow<bool>',True)
 hook('render','horizon_client_render::hud::HudRenderer::draw_range',[
     ('renderer','&crate::hud::HudRenderer','&*self'),('encoder','&mut wgpu::CommandEncoder','&mut *encoder'),('target','&wgpu::TextureView','target'),('coverage','Option<&wgpu::TextureView>','coverage'),('depth','&wgpu::TextureView','depth'),('batch','&crate::hud::HudBatch','batch'),('size','[u32;2]','size'),('vertices','&std::ops::Range<u32>','&vertices')],f'if {R}::draw(renderer,encoder,target,coverage,depth,batch,size,vertices.clone()) {{ core::ops::ControlFlow::Break(()) }} else {{ core::ops::ControlFlow::Continue(()) }}','core::ops::ControlFlow<()>',True)
-(BUNDLE/'horizon-mixin.toml').write_text(''.join(parts))
+(ROOT / 'horizon-mod.toml').write_text(''.join(parts), encoding='utf-8')

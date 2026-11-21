@@ -12,8 +12,10 @@ import zipfile
 from rebuild import IMPORT_MARK
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
-COMPAT = json.loads((ROOT / "compatibility.json").read_text())
+VERSION = tomllib.loads((ROOT / "horizon-mod.toml").read_text())["version"]
+NATIVE = tomllib.loads((ROOT / "horizon-mod.toml").read_text())["native"]
+COMPAT = dict(game=NATIVE["game"], horizon_revision=NATIVE["horizon"],
+              horizon_mixins_revision=NATIVE["mixins"])
 
 
 def main():
